@@ -128,5 +128,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# .DS_Store
+# Work environment
 .DS_Store
+.ipynb_checkpoints
+.vscode
+
+# Data
+data/
