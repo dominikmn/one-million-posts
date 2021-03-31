@@ -78,8 +78,8 @@ def load_extended_posts():
     df["is_staff"] = df.id_user.apply(lambda x: 1 if x in id_staff else 0)
 
     # add columns 'article_path' and 'article_title'    
-    article_cats = df_articles[['id_article','path', 'title', 'publishing_date']]
-    article_cats = article_cats.add_prefix('article_')
-    df = df.merge(article_cats, how='left', left_on='id_article', right_on='article_id_article').drop('article_id_article', axis=1)
+    article_features = df_articles[['id_article','path', 'title', 'publishing_date']]
+    article_features = article_features.add_prefix('article_')
+    df = df.merge(article_features, how='left', left_on='id_article', right_on='article_id_article').drop('article_id_article', axis=1)
     
     return df
