@@ -14,86 +14,46 @@
 # ---
 
 # %%
-from utils import loading
+from utils import loading, cleaning, visualizing, feature_engineering
 import pandas as pd
 from nltk.corpus import stopwords
 stopwords=stopwords.words('german')
 from string import punctuation
 from collections import Counter
-from wordcloud import WordCloud, STOPWORDS 
+
 import matplotlib.pyplot as plt
 
-# %%
+# %% tags=[]
 df = loading.load_extended_posts()
 
 
 # %% [markdown]
-# Defining functions for data cleaning and plotting
-
-# %%
-# strip punctuation
-def strip_punct(series):
-    new_series = series.str.replace(r'[^\w\s]+', '', regex=True)
-    return new_series
-
-
-# %%
-def strip_stopwords(series, stopwords=stopwords):
-    series=series.copy()
-    new_series = series.apply(lambda x: " ".join([word.lower() for word in x.split() if word.lower() not in (stopwords)]) if x is not None else x)
-    return new_series
-
-
-# %%
-def get_top_words(series, relative=False):
-    topwords=pd.Series(' '.join(series[(series==series)]).lower().split()).value_counts()
-    if relative:
-        return topwords/len(series)
-    else:
-        return topwords
-
-
-# %%
-def plot_wordcloud_series(series, colormap='BuGn'):
-    wordcloud = WordCloud(width = 800, height = 800, 
-                    background_color ='white', 
-                    stopwords = stopwords, 
-                    min_font_size = 10).generate_from_frequencies(series) 
-    wordcloud.recolor(colormap=colormap)    
-    # plot the WordCloud image                        
-    #plt.figure(figsize = (8, 8), facecolor = None) 
-    plt.imshow(wordcloud) 
-    plt.axis("off") 
-    plt.tight_layout(pad = 0) 
-
-    #plt.show()
-
-
+# Defining function for top words for labels
 
 # %%
 def top_words_label(df, label, text, stop=False, stopwords=None, plot=True, return_list=True):
     
     df_clean=df.dropna(subset=[label])
-    df_clean.loc[:,text]=strip_punct(df_clean[text])
+    df_clean.loc[:,text]=cleaning.strip_punct(df_clean[text])
     if stop:
-        df_clean.loc[:,text]=strip_stopwords(df_clean[text], stopwords=stopwords)
+        df_clean.loc[:,text]=cleaning.strip_stopwords(df_clean[text], stopwords=stopwords)
     df_pos = df_clean[df_clean[label]==1]
     df_neg = df_clean[df_clean[label]==0]
-    topwords_pos = get_top_words(df_pos[text], relative=True)
-    topwords_neg = get_top_words(df_neg[text], relative=True)
+    topwords_pos = feature_engineering.calculate_top_words(df_pos[text], relative=True)
+    topwords_neg = feature_engineering.calculate_top_words(df_neg[text], relative=True)
     topwords_pos_rel = topwords_pos.subtract(topwords_neg, fill_value=0).sort_values(ascending=False)
     topwords_neg_rel = (-topwords_pos_rel).sort_values(ascending=False)
     if plot:
         print(f'Order of plots:\nTop left: {label} = positive\nTop right: {label} = negative\nBottom left: {label} = positive, specific\nBottom right: {label} = negative, specific')
         plt.figure(figsize = (12, 12))
         plt.subplot(2, 2, 1)
-        plot_wordcloud_series(topwords_pos, colormap='BuGn')
+        visualizing.plot_wordcloud_freq(topwords_pos, colormap='BuGn')
         plt.subplot(2, 2, 2)
-        plot_wordcloud_series(topwords_neg, colormap='RdPu')
+        visualizing.plot_wordcloud_freq(topwords_neg, colormap='RdPu')
         plt.subplot(2, 2, 3)
-        plot_wordcloud_series(topwords_pos_rel,colormap='YlGn')
+        visualizing.plot_wordcloud_freq(topwords_pos_rel,colormap='YlGn')
         plt.subplot(2, 2, 4)
-        plot_wordcloud_series(topwords_neg_rel, colormap='OrRd')
+        visualizing.plot_wordcloud_freq(topwords_neg_rel, colormap='OrRd')
         plt.show()
     if return_list:
         return topwords_pos, topwords_neg, topwords_pos_rel, topwords_neg_rel
