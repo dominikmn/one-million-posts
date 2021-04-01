@@ -50,22 +50,28 @@ df_articles['path_split'] = df_articles['path'].str.split("/").apply(tuple)
 df_articles['path_depth'] = df_articles['path_split'].apply(len)
 
 # %%
+df_articles.head()
+
+# %%
 df_posts['article_path_split'] = df_posts['article_path'].str.split("/").apply(tuple)
 df_posts['article_path_depth'] = df_posts['article_path_split'].apply(len)
+
+# %%
+df_posts.head()
 
 # %% [markdown]
 # ## Articles per category
 
 # %% [markdown]
-# How many articles do we have per parent category?
+# How many unique categories do we have?
 
 # %%
-df_articles['path_split'].apply(lambda x:x[0]).value_counts()
+df_articles['path_split'].nunique()
 
 # %% [markdown]
-# How many different parths are there per depth?
+# How many different paths are there per depth?
 
-# %%
+# %% tags=[]
 df_articles[['path_split','path_depth']].drop_duplicates()['path_depth'].value_counts()\
     .reset_index().rename(columns={'index':'path_depth', 'path_depth':'count'})
 
@@ -74,6 +80,12 @@ df_articles[['path_split','path_depth']].drop_duplicates()['path_depth'].value_c
 
 # %%
 df_articles[df_articles['path_depth'] >= 7]['path_split'].unique()
+
+# %% [markdown]
+# How many articles do we have per parent category?
+
+# %%
+df_articles['path_split'].apply(lambda x:x[0]).value_counts()
 
 # %% [markdown]
 # For which paths have the most articles been written?
@@ -88,7 +100,7 @@ df_articles['path_split'].value_counts()
 # How many _commments_ do we have per category?
 
 # %%
-df_posts['article_path_split'].value_counts()
+df_posts['article_path_split'].value_counts().reset_index().head(10)
 
 # %% [markdown]
 # How many _comments_ do we have per parent category?
@@ -143,6 +155,9 @@ path_vs_label = df_posts_reduced.groupby('article_path').agg([no, yes])
 # %%
 sel1= [('label_inappropriate', 'yes'), ('label_discriminating', 'yes'), ('label_sentimentnegative', 'yes')]
 sel2 = [(c, 'yes') for c in cols_label]
+
+# %% [markdown]
+# What are the top 'negative' categories?
 
 # %%
 path_vs_label[sel1].sort_values(by=sel1, ascending=False).head(10)
