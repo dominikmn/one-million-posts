@@ -1,8 +1,10 @@
-numpy
-pandas
-matplotlib
-seaborn
-jupytext
-plotly
-jupyterlab
 
+jupyterlab==3.0.12
+jupytext==1.11.1
+matplotlib==3.4.1
+nltk==3.5
+numpy==1.20.2
+pandas==1.2.3
+plotly==4.14.3
+seaborn==0.11.1
+wordcloud==1.8.1

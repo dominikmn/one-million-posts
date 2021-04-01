@@ -77,6 +77,7 @@ def load_extended_posts():
     id_staff = df_staff.id_user.to_list()
     df["is_staff"] = df.id_user.apply(lambda x: 1 if x in id_staff else 0)
 
+
     # add article features
     article_features = df_articles[['id_article','path', 'title', 'publishing_date']]
     article_features = article_features.add_prefix('article_')
