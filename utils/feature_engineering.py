@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from . import loading
 
 def calculate_top_words(series, relative=False):
     '''calculate word frequencies from a series of strings
