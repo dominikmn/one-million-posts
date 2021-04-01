@@ -104,3 +104,20 @@ def add_column_number_subthreads(df: pd.DataFrame) -> pd.DataFrame:
     df_out = df.merge(df_subthreads, how="left", on="id_post")
     df_out.fillna({"number_subthreads": 0}, inplace=True)
     return df_out
+
+def add_column_ann_round(df: pd.DataFrame) -> pd.DataFrame:
+    """Add column `ann_round` stating whether a post was labled in round two or three.
+
+    Args:
+        df: The posts DataFrame with the columns `id_post`.
+
+    Returns:
+        df: A copy of df, extended by `ann_round`.
+    """
+    df_cons = loading.load_pure_annotations() 
+    round2= pd.DataFrame(df_cons.query("id_annotator==3").id_post.unique(), columns=['id_post'])
+    round3= pd.DataFrame((set(df_cons.id_post)-set(round2.id_post)), columns=['id_post'])
+    round2['ann_round']=2
+    round3['ann_round']=3
+    rounds = pd.concat([round2, round3])
+    return df.merge(rounds, how='left', on='id_post')
