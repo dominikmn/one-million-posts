@@ -18,7 +18,7 @@
 # Issue link: https://github.com/dominikmn/one-million-posts/issues/2
 
 # %%
-from utils import loading
+from utils import loading, feature_engineering
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -46,15 +46,15 @@ df_posts[cols_label] = df_posts[cols_label].replace({0.0:'no',1.0:'yes'})
 # ### Add path features
 
 # %%
-df_articles['path_split'] = df_articles['path'].str.split("/").apply(tuple)
-df_articles['path_depth'] = df_articles['path_split'].apply(len)
+df_articles = feature_engineering.add_column_path_split(df_articles, base_col='path', target_col='path_split')
+df_articles = feature_engineering.add_column_path_depth(df_articles, base_col='path', target_col='path_depth')
 
 # %%
 df_articles.head()
 
 # %%
-df_posts['article_path_split'] = df_posts['article_path'].str.split("/").apply(tuple)
-df_posts['article_path_depth'] = df_posts['article_path_split'].apply(len)
+df_posts = feature_engineering.add_column_path_split(df_posts, base_col='article_path', target_col='article_path_split')
+df_posts = feature_engineering.add_column_path_depth(df_posts, base_col='article_path', target_col='article_path_depth')
 
 # %%
 df_posts.head()
