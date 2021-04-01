@@ -1,5 +1,5 @@
 import pandas as pd
-from string import punctuations
+from string import punctuation
 from nltk.corpus import stopwords
 stopwords=stopwords.words('german')
 
