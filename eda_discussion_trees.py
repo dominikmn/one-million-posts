@@ -75,51 +75,13 @@ def add_column_node_type(df: pd.DataFrame) -> pd.DataFrame:
         return df.copy()
 
 
-# %% [markdown]
-# ## Analyze leaf/parent nodes per article
-#
-# ### How wide are discussion trees?
-#
-# The width of a discussion tree is defined by the number of discussion threads for this article, which is equal to the number of leaf nodes in the discussion tree.
-
-# %%
-df = add_column_node_type(df)
-
-# %%
-df.head()
-
-# %%
-# check number of leaf and parent nodes
-df.node_type.value_counts()
-
-# %%
-discussion_width = df.query("node_type == 'leaf'").groupby("id_article").node_type.count()
-
-# %%
-discussion_width.head()
-
-# %%
-discussion_width.describe()
-
-# %%
-df.id_article.nunique()
-
-
-# %% [markdown]
-# Discussion threads are on average 47 comments wide, whereas the median is at 13 comments. We have a minimum of one thread per article (in contrast to zero!) and a maximum of 2137 threads on the same article.
-
-# %% [markdown]
-# ### How long are discussion threads?
-#
-# The length of a discussion tree is defined by the number of posts between a leaf node and its root node.
-
 # %%
 def add_column_node_depth(df: pd.DataFrame) -> pd.DataFrame:
     """Add column `node_depth` stating the depth of the node up to this post.
-    
+
     Args:
         df: The posts DataFrame with the columns `id_post` and `id_parent_post`.
-    
+
     Returns:
         df: A copy of df, extended by `node_depth`.
     """
@@ -135,52 +97,6 @@ def add_column_node_depth(df: pd.DataFrame) -> pd.DataFrame:
     df_out.reset_index(inplace=True)
     return df_out
 
-
-# %%
-df = add_column_node_depth(df)
-
-# %%
-df.head()
-
-# %% [markdown]
-# We want to analyze article discussions, therefore we want to know the discussion width and length for leaf nodes that have a node depth greater than one:
-#
-# #### Length
-
-# %%
-df.query("node_type == 'leaf' and node_depth > 1").node_depth.describe()
-
-# %% [markdown]
-# The length of discussion trees in on average 3.19 posts per thread. The median is 3 posts per thread. The minimum is two post per thread and the maximum 62.
-
-# %% [markdown]
-# #### Width
-
-# %%
-discussion_width = df.query("node_type == 'leaf' and node_depth > 1").groupby("id_article").node_type.count()
-discussion_width.describe()
-
-# %% [markdown]
-# The width of discussion trees is on average 39.08 posts per article. The median is 11 threads, the minimum one, and the maximum 1783 threads.
-
-# %% [markdown]
-# Which article lead to 1783 separate threads?
-
-# %%
-discussion_width.sort_values()
-
-# %%
-df_articles = loading.load_articles()
-df_articles.query("id_article == 3641")
-
-
-# %% [markdown]
-# The article 'Flüchtlingsthema katapultiert Strache auf Platz eins' has 1783 threads.
-
-# %% [markdown]
-# ### How long are discussion sub-threads?
-#
-# A subthread starts at any parent node that has two nodes referencing it.
 
 # %%
 def add_column_number_subthreads(df: pd.DataFrame) -> pd.DataFrame:
@@ -202,11 +118,76 @@ def add_column_number_subthreads(df: pd.DataFrame) -> pd.DataFrame:
     return df_out
 
 
-# %%
+# %% tags=[]
+df = add_column_node_type(df)
+df = add_column_node_depth(df)
 df = add_column_number_subthreads(df)
-
-# %% jupyter={"source_hidden": true} tags=[]
 df.head()
+
+# %% [markdown]
+# ## Analyze leaf/parent nodes per article
+#
+# ### How wide are discussion trees?
+#
+# The width of a discussion tree is defined by the number of discussion threads for this article, which is equal to the number of leaf nodes in the discussion tree.
+
+# %%
+# check number of leaf and parent nodes
+df.node_type.value_counts()
+
+# %%
+discussion_width = df.query("node_type == 'leaf'").groupby("id_article").node_type.count()
+
+# %%
+discussion_width.describe()
+
+# %%
+df.id_article.nunique()
+
+# %% [markdown]
+# Discussion threads are on average 47 comments wide, whereas the median is at 13 comments. We have a minimum of one thread per article (in contrast to zero!) and a maximum of 2137 threads on the same article.
+
+# %% [markdown]
+# We want to analyze article discussions, therefore we want to know the discussion width for leaf nodes that have a node depth greater than one:
+
+# %%
+discussion_width = df.query("node_type == 'leaf' and node_depth > 1").groupby("id_article").node_type.count()
+discussion_width.describe()
+
+# %% [markdown]
+# The width of discussion trees is on average 39.08 posts per article. The median is 11 threads, the minimum one, and the maximum 1783 threads.
+
+# %% [markdown]
+# Which article lead to 1783 separate threads?
+
+# %%
+discussion_width.sort_values()
+
+# %%
+df_articles = loading.load_articles()
+df_articles.query("id_article == 3641")
+
+# %% [markdown]
+# The article 'Flüchtlingsthema katapultiert Strache auf Platz eins' has 1783 threads.
+
+# %% [markdown]
+# ### How long are discussion threads?
+#
+# The length of a discussion tree is defined by the number of posts between a leaf node and its root node.
+
+# %% [markdown]
+# We want to analyze article discussions, therefore we want to know the discussion length for leaf nodes that have a node depth greater than one:
+
+# %%
+df.query("node_type == 'leaf' and node_depth > 1").node_depth.describe()
+
+# %% [markdown]
+# The length of discussion trees in on average 3.19 posts per thread. The median is 3 posts per thread. The minimum is two post per thread and the maximum 62.
+
+# %% [markdown]
+# ### How long are discussion sub-threads?
+#
+# A subthread starts at any parent node that has two nodes referencing it.
 
 # %%
 df.query("number_subthreads > 0").number_subthreads.describe()
