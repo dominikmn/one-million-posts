@@ -135,3 +135,12 @@ dmypy.json
 
 # Data
 data/
+
+# Modeling and MLFlow
+models/*.sav
+mlruns
+models/*
+
+#config file has sensitive data
+.mlflow_uri
+
