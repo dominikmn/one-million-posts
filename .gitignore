@@ -135,3 +135,7 @@ dmypy.json
 
 # Data
 data/
+
+# Jupyter notebooks
+*.ipynb
+
