@@ -14,8 +14,6 @@
 # ---
 
 # %%
-
-# %%
 #import sys
 #sys.path.append("..") # add project directory to system path
 
@@ -23,6 +21,7 @@
 import pandas as pd
 import numpy as np
 import re
+from datetime import datetime
 
 # NLP imports
 from nltk.tokenize import word_tokenize
@@ -60,7 +59,7 @@ df_posts = feature_engineering.add_column_ann_round(df_posts)
 # The first simple model will only use the posts' text for classification. Since headline and body build the text, we will simply concatenate them to get the corpus.
 
 # %%
-df = df_posts.query("ann_round == 2")
+df = df_posts.query("(label_sentimentnegative == label_sentimentnegative)")
 
 # %% [markdown]
 # # TODO make function
@@ -136,9 +135,6 @@ X_train_trans = vectorizer.fit_transform(X_train)
 # !ps -A | grep gunicorn
 
 # %%
-TRACKING_URI
-
-# %%
 EXPERIMENT_NAME
 
 # %%
@@ -155,20 +151,26 @@ print("Active run_id: {}".format(run.info.run_id))
 # #### Modeling
 
 # %%
+params = {
+    "vectorizer": "tfidf",
+    "normalization": "lower",
+    "regularization_c": 0.1,
+    "stopwords": "nltk-german"
+}
+
+# %% tags=[]
 # Build and fit the model
-logreg = LogisticRegression()
+logreg = LogisticRegression(C=params['regularization_c'])
 model = logreg.fit(X_train_trans, y_train)
+
+# %%
+params['model'] = ''.join(e for e in str(logreg) if e.isalnum())
 
 # %% [markdown]
 # Predict on **training data**.
 
 # %%
 y_train_pred = model.predict(X_train_trans)
-
-# %%
-mlflow.log_metric("train -" + "F1", f1_score(y_train, y_train_pred))
-mlflow.log_metric("train -" + "recall", recall_score(y_train, y_train_pred))
-mlflow.log_metric("train -" + "precision", precision_score(y_train, y_train_pred))
 
 # %% [markdown]
 # Predict on **test data**.
@@ -177,30 +179,29 @@ mlflow.log_metric("train -" + "precision", precision_score(y_train, y_train_pred
 X_test_trans = vectorizer.transform(X_test)
 y_test_pred = model.predict(X_test_trans)
 
-# %%
-mlflow.log_metric("test -" + "F1", f1_score(y_test, y_test_pred))
-mlflow.log_metric("test -" + "recall", recall_score(y_test, y_test_pred))
-mlflow.log_metric("test -" + "precision", precision_score(y_test, y_test_pred))
-
 # %% [markdown]
 # #### MlFlow logging
 
 # %% [markdown]
 # Logging params, metrics, and model with mlflow:
 
+# %% tags=[]
+mlflow.log_metric("train -" + "F1", f1_score(y_train, y_train_pred))
+mlflow.log_metric("train -" + "recall", recall_score(y_train, y_train_pred))
+mlflow.log_metric("train -" + "precision", precision_score(y_train, y_train_pred))
+
 # %%
-params = {
-    "vectorizer": "tfidf",
-    "normalization": "lower"
-}
+mlflow.log_metric("test -" + "F1", f1_score(y_test, y_test_pred))
+mlflow.log_metric("test -" + "recall", recall_score(y_test, y_test_pred))
+mlflow.log_metric("test -" + "precision", precision_score(y_test, y_test_pred))
 
 # %%
 mlflow.log_params(params)
 mlflow.set_tag("running_from_jupyter", "True")
 #mlflow.log_artifact("./models")
 #mlflow.sklearn.log_model(model, "model")
-path = "models/linear"
+path = f"models/{params['model']}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
 save_model(sk_model=model, path=path)
-mlflow.end_run()
 
 # %%
+mlflow.end_run()
