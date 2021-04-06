@@ -33,6 +33,9 @@ df_annotations_pure = loading.load_pure_annotations()
 # %%
 def annotator_group (x): return tuple(x)
 df_annotations_distinct = df_annotations_pure.groupby(["id_post","category"]).id_annotator.agg([annotator_group]).reset_index()
+
+
+# %%
 def category_group (x): return tuple(x)
 df_annotations_distinct = df_annotations_distinct.groupby(["id_post","annotator_group"]).category.agg([category_group]).reset_index()
 
@@ -115,8 +118,8 @@ articles_israelpalestine = {9767, 10820, 11105}
 articles_refugees = {1860, 11004, 10425, 10707}
 articles_women = {1172, 1704, 1831}
 # Comment-in if you would like to read the articles
-print_articles(articles_israelpalestine)
-#print_articles(articles_refugees)
+#print_articles(articles_israelpalestine)
+print_articles(articles_refugees)
 #print_articles(articles_women)
 
 # %% [markdown]
@@ -144,5 +147,29 @@ df_articles_discus
 # %%
 # Comment-in if you would like to read the articles
 #print_articles(articles_discus)
+
+# %% [markdown]
+# ### Round 3 analysis - 'feedback'
+# The extra-labels for personal stories from round 3 were taken from pre-labeled posts or posts that have been answered by the staff already.
+#
+# Let's have a look on these articles.
+
+# %%
+li_a = [(1,),(2,),(3,)]
+li_c = [('PossiblyFeedback',)]
+articles_discus = give_articles_from_distinct(li_a,li_c)
+print(articles_discus)
+
+# %% [markdown]
+# ### Round 2 analysis
+# Are the 1000 random posts well distributed over the articles?
+#
+# Let's have a look on these articles.
+
+# %%
+li_a = [(1,2,3)]
+li_c = [('ArgumentsUsed', 'Discriminating', 'Inappropriate', 'OffTopic', 'PersonalStories', 'PossiblyFeedback', 'SentimentNegative', 'SentimentNeutral', 'SentimentPositive')]
+articles_discus = give_articles_from_distinct(li_a,li_c)
+print(articles_discus)
 
 # %%
