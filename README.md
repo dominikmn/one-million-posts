@@ -53,3 +53,12 @@ mlflow ui
 ```
 
 and opening the link [http://127.0.0.1:5000](http://127.0.0.1:5000).
+
+### Kill the gunicorn process
+
+If the port is in use (and the local mlflow cannot be run with `mlflow ui`) the process can be killed with
+
+```bash
+ps -A | grep gunicorn
+kill <PID>
+```
