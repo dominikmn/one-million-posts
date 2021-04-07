@@ -14,9 +14,6 @@
 # ---
 
 # %%
-#import sys
-#sys.path.append("..") # add project directory to system path
-
 # general imports
 import pandas as pd
 import numpy as np
@@ -46,6 +43,7 @@ from mlflow.sklearn import save_model
 from modeling.config import TRACKING_URI, EXPERIMENT_NAME
 
 # %%
+# set logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(asctime)s: %(message)s")
 logging.getLogger("pyhive").setLevel(logging.CRITICAL)  # avoid excessive logs
@@ -53,7 +51,15 @@ logger.setLevel(logging.INFO)
 
 
 # %%
-def __get_data():
+def __get_data() -> (pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame):
+    """Get the data for training
+
+    Returns:
+        X_train: The features of the training set
+        X_val: The features of the validation set
+        y_train: All targets of the training set
+        y_val: All targets of the validation set
+    """
     df_posts_train = loading.load_extended_posts(split="train")
     df_posts_val = loading.load_extended_posts(split="val")
 
@@ -69,14 +75,6 @@ def __get_data():
     y_val = df_val[target_labels]
     return X_train, X_val, y_train, y_val
 
-
-# %% [markdown]
-# ## Feature extraction
-
-
-# %% [markdown]
-# ## Modeling
-#
 
 # %%
 def __compute_and_log_metrics(
@@ -110,8 +108,42 @@ def __compute_and_log_metrics(
     return f1, precision, recall
 
 
+def calculate_best_threshold(y_true: pd.Series, y_pred_proba: np.array) -> float:
+    """Calculate the best threshold value for classification.
+
+    Args:
+        y_pred_proba: Predicted probabilities.
+        y_true: Series with true target labels.
+
+    Returns:
+        best_th: The threshold value that maximizes the f1-score.
+    """
+    best_th = 0.0
+    best_f1 = 0.0
+    for th in np.arange(0.05, 0.96, 0.05):
+        y_pred_temp = predict_with_threshold(y_pred_proba, th)
+        f1_temp = f1_score(y_true, y_pred_temp)
+        if f1_temp > best_th:
+            best_th = th
+            best_f1 = f1_temp
+    return best_th
+
+
+def predict_with_threshold(y_pred_proba: np.array, threshold: float) -> np.array:
+    return (y_pred_proba >= threshold).astype(int)
+
+
 # %%
-def run_training(model_details, mlflow_params):
+def run_training(model_details, mlflow_params) -> None:
+    """Run model training
+
+    Get the data and run the training. Log model parameters with MLFlow
+    and logger. Store the model in the `models` folder.
+
+    Args:
+        model_details: Dictionary with a human readable `name` and a sklearn.estimator `model`.
+        mlflow_params: Dictionary with parameters that shall be tracked with MLFlow.
+    """
     logger.info(f"Getting the data")
     X_train, X_val, y_train_multi, y_val_multi = __get_data()
 
@@ -119,10 +151,7 @@ def run_training(model_details, mlflow_params):
     mlflow.set_tracking_uri(TRACKING_URI)
     mlflow.set_experiment(EXPERIMENT_NAME)
 
-    # model
-    logger.info(f"Training a simple {model_details['name']}")
-
-    # label
+    # train model for each label
     for label in y_train_multi.columns:
         y_train = y_train_multi[label]
         y_val = y_val_multi[label]
@@ -130,16 +159,28 @@ def run_training(model_details, mlflow_params):
 
         logger.info(f"Training a simple {model_details['name']} for {label}")
         with mlflow.start_run():
+            # train model and predict
             model = model_details["model"].fit(X_train, y_train)
             y_train_pred = model.predict(X_train)
             y_val_pred = model.predict(X_val)
 
+            # select best threshold if model implements predict_proba
+            if callable(getattr(model, "predict_proba", None)):
+                y_train_proba = model.predict_proba(X_train)[:, 1]
+                y_val_proba = model.predict_proba(X_val)[:, 1]
+                threshold = calculate_best_threshold(y_train, y_train_proba)
+                mlflow_params["threshold"] = threshold
+                y_train_pred = predict_with_threshold(y_train_proba, threshold)
+                y_val_pred = predict_with_threshold(y_val_proba, threshold)
+
+            # store best parameters if model is GridSearch
             if isinstance(model, GridSearchCV):
                 best_params = model.best_params_
                 if 'vectorizer__stop_words' in best_params.keys() and best_params['vectorizer__stop_words']!=None:
                     best_params['vectorizer__stop_words'] = "NLTK-German"
                 mlflow_params["best_params"] = best_params
 
+            # log parameters and metrics
             mlflow.log_params(mlflow_params)
             __compute_and_log_metrics(y_train, y_train_pred, "train")
             __compute_and_log_metrics(y_val, y_val_pred, "val")
