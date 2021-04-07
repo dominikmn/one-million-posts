@@ -73,28 +73,6 @@ def __get_data():
 # %% [markdown]
 # ## Feature extraction
 
-# %%
-def preprocess_text(text):
-    # normalize (remove capitalization and punctuation)
-    text = text.lower()
-    text = re.sub(r"[^a-zA-Z0-9]", " ", text)
-
-    # tokenize
-    words = text.split()
-    return words
-
-    # stopwords removal
-    words = [w for w in words if w not in stopwords]
-
-    # stemming
-    stemmer = Cistem()
-    stemmed = [stemmer.stem(w) for w in words]
-
-    # lemmatization
-    # TODO: find/install german lemmatizer
-
-    return stemmed
-
 
 # %% [markdown]
 # ## Modeling
@@ -153,13 +131,17 @@ def run_training(model_details, mlflow_params):
         logger.info(f"Training a simple {model_details['name']} for {label}")
         with mlflow.start_run():
             model = model_details["model"].fit(X_train, y_train)
+            y_train_pred = model.predict(X_train)
+            y_val_pred = model.predict(X_val)
+
+            if isinstance(model, GridSearchCV):
+                best_params = model.best_params_
+                if 'vectorizer__stop_words' in best_params.keys() and best_params['vectorizer__stop_words']!=None:
+                    best_params['vectorizer__stop_words'] = "NLTK-German"
+                mlflow_params["best_params"] = best_params
 
             mlflow.log_params(mlflow_params)
-
-            y_train_pred = model.predict(X_train)
             __compute_and_log_metrics(y_train, y_train_pred, "train")
-
-            y_val_pred = model.predict(X_val)
             __compute_and_log_metrics(y_val, y_val_pred, "val")
 
             # saving the model
@@ -172,16 +154,23 @@ def run_training(model_details, mlflow_params):
 # %%
 if __name__ == "__main__":
     pipeline = Pipeline([
-        ("tfidf", TfidfVectorizer(stop_words=stopwords)),
-        ("clf", MultinomialNB())
+        ("vectorizer", TfidfVectorizer(stop_words=stopwords)),
+        ("clf", MultinomialNB()),
     ])
+    param_grid = {
+        "vectorizer__ngram_range": [(1,1),],
+        "vectorizer__min_df": np.linspace(0, 0.05, 2),
+        "vectorizer__max_df": np.linspace(0.95, 1.0, 2),
+    }
+    gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=3, verbose=3)
 
-    model = {"name": "NaiveBayes", "model": pipeline}
+    model = {"name": "NaiveBayes", "model": gs}
     mlflow_params = {
         "vectorizer": "tfidf",
         "normalization": "lower",
         "stopwords": "nltk-german",
-        "clf": model["name"],
+        "model": model["name"],
+        "grid_search_params": param_grid,
     }
 
     run_training(model, mlflow_params)
