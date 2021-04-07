@@ -122,3 +122,21 @@ def add_column_ann_round(df: pd.DataFrame) -> pd.DataFrame:
     round3['ann_round']=3
     rounds = pd.concat([round2, round3])
     return df.merge(rounds, how='left', on='id_post')
+
+
+def add_column_text(df: pd.DataFrame) -> pd.DataFrame:
+    """Add column `text` with text from headline and body.
+
+    The new text consists of the concatenation of headline and body, with
+    `\n` and `\r` removed.
+
+    Args:
+        df: The posts DataFrame with the columns `headline` and `body`.
+
+    Returns:
+        df: A copy of df, extended by `text`.
+    """
+    df_text = df.fillna(value={"body": "", "headline": ""})
+    df_text["text"] = df_text.body + df_text.headline
+    df_text.text = df_text.text.str.replace("\n", " ").str.replace("\r", " ")
+    return df_text
