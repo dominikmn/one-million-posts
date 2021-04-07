@@ -24,7 +24,7 @@ import logging
 # NLP imports
 from nltk.corpus import stopwords
 stopwords=stopwords.words('german')
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 # modeling imports
 from sklearn.model_selection import GridSearchCV
@@ -195,7 +195,7 @@ def run_training(model_details, mlflow_params) -> None:
 # %%
 if __name__ == "__main__":
     pipeline = Pipeline([
-        ("vectorizer", TfidfVectorizer()),
+        ("vectorizer", CountVectorizer()),
         ("clf", MultinomialNB()),
     ])
     param_grid = {
@@ -212,7 +212,7 @@ if __name__ == "__main__":
 
     model = {"name": "NaiveBayes", "model": gs}
     mlflow_params = {
-        "vectorizer": "tfidf",
+        "vectorizer": "count",
         "normalization": "lower",
         "stopwords": "nltk-german",
         "model": model["name"],
