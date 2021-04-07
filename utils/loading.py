@@ -56,8 +56,13 @@ def load_cv_split():
     return df_cv_split
 
 
-def load_extended_posts():
-    '''Load post table extended by annotations and staff.
+def load_extended_posts(split:str=None ):
+    '''
+    Load post table extended by annotations and staff.
+    Args:
+        - split: [None, 'test', 'train', 'val']. Reduce dataframe to test/train/validation split only.
+    Returns:
+        - Dataframe
     '''
     con = get_database_connection()
     df_annotations = load_annotations()
@@ -65,6 +70,10 @@ def load_extended_posts():
     df_staff = load_staff()
     df_articles = load_articles()
 
+    if split:
+        filter_frame = pd.read_csv(f'./data/ann2_{split}.csv', header=None, index_col=0, names=['id_post'])
+        df_posts = df_posts.merge(filter_frame, how='inner', on='id_post')
+    
     # prepare annotations
     annotations = df_annotations.pivot(index="id_post", columns="category", values="value")
     annotations.columns = annotations.columns.str.lower()
