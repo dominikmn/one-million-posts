@@ -199,9 +199,10 @@ if __name__ == "__main__":
         ("clf", MultinomialNB()),
     ])
     param_grid = {
-        "vectorizer__ngram_range": [(1,1),],
-        "vectorizer__min_df": np.linspace(0, 0.05, 2),
-        "vectorizer__max_df": np.linspace(0.95, 1.0, 2),
+        "vectorizer__ngram_range" : [(1,1), (1,2), (1,3)],
+        "vectorizer__stop_words" : [stopwords, None],
+        "vectorizer__min_df": np.linspace(0, 0.1, 3),
+        "vectorizer__max_df": np.linspace(0.9, 1.0, 3),
     }
     gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=3, verbose=3)
 
