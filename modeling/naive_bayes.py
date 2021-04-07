@@ -195,7 +195,7 @@ def run_training(model_details, mlflow_params) -> None:
 # %%
 if __name__ == "__main__":
     pipeline = Pipeline([
-        ("vectorizer", TfidfVectorizer(stop_words=stopwords)),
+        ("vectorizer", TfidfVectorizer()),
         ("clf", MultinomialNB()),
     ])
     param_grid = {
@@ -206,13 +206,17 @@ if __name__ == "__main__":
     }
     gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=3, verbose=3)
 
+    # MLFlow params have limited characters, therefore stopwords must not be given as list
+    grid_search_params = param_grid.copy()
+    grid_search_params["vectorizer__stop_words"] = ["NLTK-German", None]
+
     model = {"name": "NaiveBayes", "model": gs}
     mlflow_params = {
         "vectorizer": "tfidf",
         "normalization": "lower",
         "stopwords": "nltk-german",
         "model": model["name"],
-        "grid_search_params": param_grid,
+        "grid_search_params": grid_search_params,
     }
 
     run_training(model, mlflow_params)
