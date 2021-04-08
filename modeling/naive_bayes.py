@@ -123,7 +123,7 @@ def calculate_best_threshold(y_true: pd.Series, y_pred_proba: np.array) -> float
     for th in np.arange(0.05, 0.96, 0.05):
         y_pred_temp = predict_with_threshold(y_pred_proba, th)
         f1_temp = f1_score(y_true, y_pred_temp)
-        if f1_temp > best_th:
+        if f1_temp > best_f1:
             best_th = th
             best_f1 = f1_temp
     return best_th
