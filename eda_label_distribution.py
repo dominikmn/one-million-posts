@@ -29,40 +29,55 @@ df_ann = feature_engineering.add_column_ann_round(df_ann)
 df_ann.head()
 
 # %%
-df_ann.ann_round.unique()
-
-# %%
+# prepare extended annotation dataframe with duplicates annotated with "all"
 df_ann_ext = df_ann.copy()
 df_ann_ext.ann_round = "all"
 df_ann.ann_round = df_ann.ann_round.astype(str)
 df_ann_ext = pd.concat([df_ann_ext, df_ann], axis=0)
 df_ann_ext.shape
 
+# %%
+# annotation counts per value, annotation round, and category
+df_ann_counts = df_ann_ext.groupby(["category", "ann_round"])["value"].value_counts().unstack(level=2).unstack(level=1)
+df_ann_counts
+
+
+# %% [markdown]
+# ## Bar chart
+#
+# For each label there are three bars indicating the percentage of positive lables annotated in this round. All means round 2 and 3.
+# This plot shows a "true" label distribution for randomly sampled posts in round 2. The posts from round 3 are sampled in a way to increase positive annotations for rare labels.
 
 # %%
-# todo: total and a need to be fixed!
-# kindly borrowed from https://stackoverflow.com/questions/35692781/python-plotting-percentage-in-seaborn-bar-plot
-def add_counts(ax, feature, number_of_categories, hue_categories):
-    a = [p.get_height() for p in ax.patches]
+# kindly borrowed and adjusted from https://stackoverflow.com/questions/35692781/python-plotting-percentage-in-seaborn-bar-plot
+def add_annotation_with_hue(ax, absolute_values):
+    """Add annotations to barplot with hue
+
+    Args:
+        ax: The axes of the plot.
+        absolute_values: DataFrame with values to annotate (x lables of plot as index, hue lables as columns). 
+    """
+    labels = absolute_values.index.to_list()
+    hue_categories = absolute_values.columns.to_list()
+    number_of_categories = len(labels) 
+    number_hue_categories = len(hue_categories)
     patch = [p for p in ax.patches]
-    for i in range(number_of_categories):
-        for j in range(hue_categories):
-            total = feature.value_counts().values[j]
-            percentage = '{:.1f}'.format(a[(j*number_of_categories + i)]*total)
+    for i, label in enumerate(labels):
+        for j, hue_column in enumerate(hue_categories):
+            annotation = f'{absolute_values.loc[label, hue_column]:.0f}'
             x = patch[(j*number_of_categories + i)].get_x() + patch[(j*number_of_categories + i)].get_width() / 2 - 0.15
-            y = patch[(j*number_of_categories + i)].get_y() + patch[(j*number_of_categories + i)].get_height() 
-            ax.annotate(percentage, (x, y), size = 12)
-    plt.show()
+            y = patch[(j*number_of_categories + i)].get_y() + patch[(j*number_of_categories + i)].get_height()  + 0.01
+            ax.annotate(annotation, (x, y), size = 14)
 
 
 # %%
-font = {'family' : 'normal',
-        'size'   : 18}
+font = {'size'   : 16}
 matplotlib.rc('font', **font)
 
 plt.figure(figsize=(12,6))
 COLOR_STANDARD = ["#EC008E", "#bdbdbd", "#636363"]
 g = sns.barplot(data=df_ann_ext, x="category", y="value", hue="ann_round", ci=None, hue_order=["all", "2", "3"], palette=sns.color_palette(COLOR_STANDARD))
+sns.despine(left = True, bottom = True)
 _ = g.set_title("Positive annotations per label and annotation round")
 _ = g.set(ylabel="Positive annotations [%]", xlabel="Label")
 _ = g.legend(title="Annotation round")
@@ -72,29 +87,43 @@ _ = g.set_xticklabels(
     horizontalalignment='right'
 )
 g.set_ylim(bottom=0, top=1);
+#add_counts(g, df_ann_counts.loc[:, 1])
 plt.savefig("./pictures/positive_annotations_per_label.png", bbox_inches="tight")
 
-# %%
-font = {'family' : 'normal',
-        'size'   : 18}
-matplotlib.rc('font', **font)
+# %% [markdown]
+# ## Stacked Bar Chart
+#
+# Create one bar per label, showing the percentage of the postitive annotations of the label. The hue indicates the annotation round.
+#
+# This plot stresses how much of our data is "useless" due to the sampling strategy in annotation round 3.
 
-plt.figure(figsize=(16,6))
-COLOR_STANDARD = ["#bdbdbd", "#636363"]
-g = sns.countplot(data=df_ann, x="category", hue="ann_round", hue_order=["2", "3"], palette=sns.color_palette(COLOR_STANDARD))
-_ = g.set_title("Positive annotations per label and annotation round")
+# %%
+# Seaborn does not support stacked bar charts. Therefore, I need to plot once the cumulative bar and the smaller one on top.
+# Now, calculate the percentages of positive annotations from round 3 and all annotations with df_ann_counts
+total = df_ann_counts.loc[:, (1, "all")] + df_ann_counts.loc[:, (0, "all")]
+df_ann_perc_3 = df_ann_counts.loc[:, (1, "3")] / total
+df_ann_perc_all = df_ann_counts.loc[:, (1, "all")] / total
+df_ann_per = pd.concat({"total": df_ann_perc_all, "3": df_ann_perc_3}, axis=1).reset_index()
+df_ann_per
+
+# %%
+f, ax = plt.subplots(figsize = (12,6))
+g = sns.barplot(x = 'category', y = 'total', data = df_ann_per,
+            label = '2', color = COLOR_STANDARD[1], edgecolor = 'w')
+sns.set_color_codes('muted')
+sns.barplot(x = 'category', y = '3', data = df_ann_per,
+            label = '3', color = COLOR_STANDARD[2], edgecolor = 'w')
+ax.legend(ncol = 2, loc = 'upper left')
+sns.despine(left = True, bottom = True)
+_ = g.set_title("Positive annotations per label")
 _ = g.set(ylabel="Positive annotations [%]", xlabel="Label")
-_ = g.legend(title="Annotation round)")
+_ = g.legend(title="Annotation round")
 _ = g.set_xticklabels(
     g.get_xticklabels(), 
     rotation=45, 
     horizontalalignment='right'
 )
 g.set_ylim(bottom=0, top=1);
-
-# %%
-import seaborn as sns
-sns.set()
-df_ann.groupby(["category", "ann_round"])["value"].value_counts()#set_index('ann_round').value_counts()#.plot(kind='bar', stacked=True)
+plt.savefig("./pictures/positive_annotations_per_label_stacked_ylim1.png", bbox_inches="tight");
 
 # %%
