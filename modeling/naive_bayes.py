@@ -195,7 +195,7 @@ def run_training(model_details, mlflow_params) -> None:
 # %%
 if __name__ == "__main__":
     pipeline = Pipeline([
-        ("vectorizer", TfidfVectorizer()),
+        ("vectorizer", CountVectorizer()),
         ("clf", MultinomialNB()),
     ])
     param_grid = {
@@ -212,7 +212,7 @@ if __name__ == "__main__":
 
     model = {"name": "NaiveBayes", "model": gs}
     mlflow_params = {
-        "vectorizer": "tfidf",
+        "vectorizer": "count",
         "normalization": "lower",
         "stopwords": "nltk-german",
         "model": model["name"],
