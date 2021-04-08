@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import re
 from datetime import datetime
+import logging
 
 # NLP imports
 from nltk.tokenize import word_tokenize
@@ -36,33 +37,29 @@ from mlflow.sklearn import save_model
 from modeling.config import TRACKING_URI, EXPERIMENT_NAME
 
 ## Optional preprocess fuction
-def preprocess_text(text):
+def preprocess_snowball(text):
     # normalize (remove capitalization and punctuation)
     text = text.lower()
     text = re.sub(r"[^a-zA-Z0-9]", " ", text)
 
-    # tokenize
     words = text.split()
-    return words
-
-    # stopwords removal
-    words = [w for w in words if w not in stopwords]
 
     # stemming
-    stemmer = Cistem()
+    stemmer = SnowballStemmer(language='german')
     stemmed = [stemmer.stem(w) for w in words]
-
-    # lemmatization
-    # TODO: find/install german lemmatizer
     
     return stemmed
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s: %(message)s")
+logging.getLogger("pyhive").setLevel(logging.CRITICAL)  # avoid excessive logs
+logger.setLevel(logging.INFO)
 
 ## Params initialization
-params = dict()
+mlflow_params = dict()
 
 ## Loading data
-print("Loading data...")
+logger.info("Loading data...")
 #df_train = loading.load_extended_posts(split='train')
 #df_test = loading.load_extended_posts(split='test')
 #df_val = loading.load_extended_posts(split='val')
@@ -78,68 +75,75 @@ print("Loading data...")
 df_train = pd.read_csv('./data/df_train.csv', sep='\t')
 df_test = pd.read_csv('./data/df_test.csv', sep='\t')
 df_val = pd.read_csv('./data/df_val.csv', sep='\t')
-
 df_combi = pd.concat([df_train,df_val])
-fold = [-1]*df_train.shape[0] + [0]*df_val.shape[0]
 
-print("Data loaded.")
+logger.info("Data loaded.")
 
-y_col = ['label_argumentsused', 'label_discriminating', 'label_inappropriate', 'label_offtopic', 'label_personalstories',
-            'label_possiblyfeedback', 'label_sentimentnegative', 'label_sentimentneutral', 'label_sentimentpositive']
+y_col = [
+        'label_sentimentnegative', 
+        'label_sentimentpositive',
+        'label_offtopic', 
+        'label_inappropriate', 
+        'label_discriminating', 
+        'label_possiblyfeedback', 
+        'label_personalstories', 
+        'label_argumentsused', 
+        #'label_sentimentneutral', 
+        ]
 
 def train_model(label,):
     print('-'*50)
-    print(f"Model building for label: {label}.")
-    params['label'] = label
+    logger.info(f"Model-building for label: {label}.")
 
     X_train = df_train.text
-    X_test = df_test.text
     X_val = df_val.text
     X_combi = df_combi.text
-    y_train = df_train[params['label']]
-    y_test = df_test[params['label']]
-    y_val = df_val[params['label']]
-    y_combi = df_combi[params['label']]
+    X_test = df_test.text
 
-    ## Feature extraction
-    params["normalization"] = 'lower'
-    #params["stopwords"] = None
-    vectorizer = CountVectorizer(stop_words=None, preprocessor=None, tokenizer=None)
-    X_train_vector = vectorizer.fit_transform(X_train)
-    X_val_vector = vectorizer.transform(X_val)
-    X_test_vector = vectorizer.transform(X_test)
-    X_combi_vector = vectorizer.transform(X_combi)
-    params["vectorizer"] = ''.join(e for e in str(vectorizer) if e.isalnum())
+    y_train = df_train[label]
+    y_val = df_val[label]
+    y_combi = df_combi[label]
+    y_test = df_test[label]
 
     # setting the MLFlow connection and experiment
     mlflow.set_tracking_uri(TRACKING_URI)
     mlflow.set_experiment(EXPERIMENT_NAME)
     mlflow.start_run()
     run = mlflow.active_run()
-    print("Active run_id: {}".format(run.info.run_id))
+    logger.info("Active run_id: {}".format(run.info.run_id))
 
     #### Modeling
-    #params["regularization_c"] =  0.1
-    #model = SVC(C=params['regularization_c'], kernel='linear')
+    vectorizer = CountVectorizer()
     model = SVC()
-    pipeline = Pipeline([('model', model)])
+    pipeline = Pipeline([
+        ('vectorizer', vectorizer),
+        ('model', model),
+        ])
 
-    ps = PredefinedSplit(fold)
-    params_grid = {'model__C':[1E-1, 1E-2, 1E-3, 1E-4, 1E-5, 1E-6],
-        'model__kernel':['linear', 'rbf']
+    # **TODO**: This manual fold does currently cause data leakage.
+    #           When training on X_combi, the f1-scores of X_val are all near 1.0.
+    #           Instead taking cv=3 and training on X_train for now.
+    #ps = PredefinedSplit([-1]*df_train.shape[0] + [0]*df_val.shape[0])
+
+    grid_search_params = {
+        #'vectorizer__stop_words': [None], 
+        #'vectorizer__preprocessor': [None, preprocess_snowball],
+        #'vectorizer__tokenizer': [None],
+        'model__C':[.5**0, .5**1, .5**2, .5**3, .5**4, .5**5,],
+        'model__kernel':['linear', 'rbf',],
         }
-    grid_search = GridSearchCV(pipeline, param_grid=params_grid, cv=ps, scoring='f1',
-                           verbose=5, n_jobs=-1)
+    grid_search = GridSearchCV(pipeline, param_grid=grid_search_params, cv=3, scoring='f1',
+                           verbose=3, n_jobs=-1)
 
-    #print("Starting fit...")
-    grid_search.fit(X_combi_vector, y_combi)
+    logger.info("Start fitting...")
+    grid_search.fit(X_train, y_train)
 
     # Predict
-    model_best = grid_search.best_estimator_['model']
-    params['model'] = ''.join(e for e in str(model_best) if e.isalnum())
-    y_train_pred = model_best.predict(X_train_vector)
-    y_val_pred = model_best.predict(X_val_vector)
-    y_test_pred = model_best.predict(X_test_vector)
+    logger.info(f"Best score: {grid_search.best_score_}")
+    model_best = grid_search.best_estimator_
+    y_train_pred = model_best.predict(X_train)
+    y_val_pred = model_best.predict(X_val)
+    y_test_pred = model_best.predict(X_test)
 
     #### MlFlow logging
     # Logging params, metrics, and model with mlflow:
@@ -151,20 +155,66 @@ def train_model(label,):
     mlflow.log_metric("val - " + "recall", recall_score(y_val, y_val_pred))
     mlflow.log_metric("val - " + "precision", precision_score(y_val, y_val_pred))
 
-    ##mlflow.log_metric("test - " + "F1", f1_score(y_test, y_test_pred))
-    ##mlflow.log_metric("test - " + "recall", recall_score(y_test, y_test_pred))
-    ##mlflow.log_metric("test - " + "precision", precision_score(y_test, y_test_pred))
+    #mlflow.log_metric("test - " + "F1", f1_score(y_test, y_test_pred))
+    #mlflow.log_metric("test - " + "recall", recall_score(y_test, y_test_pred))
+    #mlflow.log_metric("test - " + "precision", precision_score(y_test, y_test_pred))
 
-    mlflow.log_params(params)
-    mlflow.set_tag("running_from_jupyter", "False")
+    mlflow_params["normalization"] = 'lower'
+    mlflow_params["vectorizer"] = ''.join(e for e in str(vectorizer) if e.isalnum())
+    mlflow_params['model'] = ''.join(e for e in str(model) if e.isalnum())
+    mlflow_params['grid_search_params'] = grid_search_params
+    mlflow_params['label'] = label
+    mlflow_params["best_params"] = grid_search.best_params_
+    mlflow.log_params(mlflow_params)
+    #mlflow.set_tag("running_from_jupyter", "False")
     #mlflow.log_artifact("./models")
     #mlflow.sklearn.log_model(model, "model")
-    path = f"models/{params['model']}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
+    t = datetime.now().strftime('%Y-%m-%d_%H%M%S')
+    path = f"models/{mlflow_params['model']}_{label}_{t}"
     save_model(sk_model=model_best, path=path)
+    mlflow.end_run()
 
+scores_bow = {
+        'label_sentimentnegative':{'f1':0.5307},
+        'label_sentimentpositive':{'f1':0.0822},
+        'label_offtopic':{'f1':0.2553}, 
+        'label_inappropriate':{'f1':0.1328}, 
+        'label_discriminating':{'f1':0.1321}, 
+        'label_possiblyfeedback':{'f1':0.6156}, 
+        'label_personalstories':{'f1':0.6407}, 
+        'label_argumentsused':{'f1':0.5625},
+        }
+
+scores_2017 = {
+        'BOW': scores_bow,
+        }
+
+def train_pseudo(label, model):
+    mlflow.set_tracking_uri(TRACKING_URI)
+    mlflow.set_experiment(EXPERIMENT_NAME)
+    mlflow.start_run()
+        
+    #mlflow.log_metric("train - " + "F1", )
+    #mlflow.log_metric("train - " + "recall", recall_score(y_train, y_train_pred))
+    #mlflow.log_metric("train - " + "precision", precision_score(y_train, y_train_pred))
+    mlflow.log_metric("val - " + "F1", scores_2017[model][label]['f1'] )
+    #mlflow.log_metric("val - " + "recall", recall_score(y_val, y_val_pred))
+    #mlflow.log_metric("val - " + "precision", precision_score(y_val, y_val_pred))
+    #mlflow.log_metric("test - " + "F1", f1_score(y_test, y_test_pred))
+    #mlflow.log_metric("test - " + "recall", recall_score(y_test, y_test_pred))
+    #mlflow.log_metric("test - " + "precision", precision_score(y_test, y_test_pred))
+
+    mlflow_params['label'] = label
+    mlflow_params['model'] = model
+    mlflow_params["normalization"] = ''
+    mlflow_params["vectorizer"] = ''
+    mlflow_params['grid_search_params'] = ''
+    mlflow_params["best_params"] = ''
+    mlflow.log_params(mlflow_params)
     mlflow.end_run()
 
 
 if __name__ == '__main__':
     for l in y_col:
+        #train_pseudo(l, 'BOW')
         train_model(l) 
