@@ -128,7 +128,7 @@ def add_column_text(df: pd.DataFrame) -> pd.DataFrame:
     """Add column `text` with text from headline and body.
 
     The new text consists of the concatenation of headline and body, with
-    `\n` and `\r` removed.
+    `\\n` and `\\r` removed.
 
     Args:
         df: The posts DataFrame with the columns `headline` and `body`.
