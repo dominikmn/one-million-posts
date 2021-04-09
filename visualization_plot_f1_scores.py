@@ -67,6 +67,22 @@ y_col_grouped = [
         'label_possiblyfeedback', 
     ]
 
+# %% tags=[]
+# column order grouped in [undesirable, desirable, neutral but requires action]
+y_col_grouped_clean= [
+        'SentimentNegative', 
+        'OffTopic', 
+        'Inappropriate', 
+        'Discriminating', 
+        'ArgumentsUsed',
+        'PersonalStories', 
+        'SentimentPositive',
+        'PossiblyFeedback', 
+    ]
+
+# %%
+y_col_dict = {r:c for r,c in zip(y_col_grouped, y_col_grouped_clean)}
+
 # %% [markdown]
 # ## Scores Zero Shot
 
@@ -118,13 +134,13 @@ scores = scores_pivot.iloc[:,[5,4,1,2]]  # choose only specific columns (i.e. mo
 z      = np.array(scores.reset_index(drop=True)) # Must be a np.array instead of pandas DataFrame
 z_text = [["{:.2f}".format(y) for y in x] for x in np.array(scores.reset_index(drop=True))]
 x      = list(scores.columns) # Must be a list instead of pandas Series
-y      = [s.split('_')[1] for s in scores.index] # Must be a list instead of pandas Series
+y      = [y_col_dict[s] for s in scores.index] # Must be a list instead of pandas Series
 
 # %%
 layout_heatmap = go.Layout(
     #title=('Model f1 scores'),
-    xaxis=dict(title='Compared models'), 
-    yaxis=dict(title='Labels', dtick=1),
+    #xaxis=dict(title='Compared models'), 
+    #yaxis=dict(title='Labels', dtick=1),
     paper_bgcolor='rgba(0,0,0,0)',
     plot_bgcolor='rgba(0,0,0,0)',
 )
@@ -142,7 +158,7 @@ ff_fig = ff.create_annotated_heatmap(
 fig  = go.FigureWidget(ff_fig)
 fig.layout=layout_heatmap
 fig.layout.annotations = ff_fig.layout.annotations
-fig.data[0].colorbar = dict(title='f1 Score', titleside = 'right')
+fig.data[0].colorbar = dict(title='F1 Score', titleside = 'right')
 fig.update_layout(title_x=0.5)
 fig.update_xaxes(side="top")
 
