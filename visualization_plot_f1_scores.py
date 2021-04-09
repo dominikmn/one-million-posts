@@ -28,6 +28,7 @@ import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
+import plotly.io as pio
 import matplotlib as plt
 
 # %% [markdown]
@@ -41,6 +42,7 @@ import matplotlib as plt
 # ## Label ordering
 
 # %% tags=[]
+# column order as in the paper Schabus,2017
 y_col = [
         'label_sentimentnegative', 
         'label_sentimentpositive',
@@ -50,6 +52,19 @@ y_col = [
         'label_possiblyfeedback', 
         'label_personalstories', 
         'label_argumentsused',
+    ]
+
+# %% tags=[]
+# column order grouped in [undesirable, desirable, neutral but requires action]
+y_col_grouped = [
+        'label_sentimentnegative', 
+        'label_offtopic', 
+        'label_inappropriate', 
+        'label_discriminating', 
+        'label_argumentsused',
+        'label_personalstories', 
+        'label_sentimentpositive',
+        'label_possiblyfeedback', 
     ]
 
 # %% [markdown]
@@ -93,7 +108,7 @@ scores_all = pd.concat([scores_zeroshot, scores_mlflow]).reset_index(drop=True) 
 scores_all.shape
 
 # %%
-scores_pivot = scores_all.pivot_table(index='label', columns='model', values='f1_score').reindex(y_col[::-1]) #reindex gives a custom order to the rows
+scores_pivot = scores_all.pivot_table(index='label', columns='model', values='f1_score').reindex(y_col_grouped[::-1]) #reindex gives a custom order to the rows
 
 
 # %%
@@ -103,15 +118,15 @@ scores = scores_pivot.iloc[:,[5,4,1,2]]  # choose only specific columns (i.e. mo
 z      = np.array(scores.reset_index(drop=True)) # Must be a np.array instead of pandas DataFrame
 z_text = [["{:.2f}".format(y) for y in x] for x in np.array(scores.reset_index(drop=True))]
 x      = list(scores.columns) # Must be a list instead of pandas Series
-y      = list(scores.index) # Must be a list instead of pandas Series
+y      = [s.split('_')[1] for s in scores.index] # Must be a list instead of pandas Series
 
 # %%
 layout_heatmap = go.Layout(
-    title=('Model f1 scores'),
-    #xaxis=dict(title='Models'), 
+    #title=('Model f1 scores'),
+    xaxis=dict(title='Compared models'), 
     yaxis=dict(title='Labels', dtick=1),
-    paper_bgcolor='rgba(255,255,255,255)',
-    plot_bgcolor='rgba(255,255,255,255)',
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)',
 )
 
 ff_fig = ff.create_annotated_heatmap(
@@ -122,7 +137,7 @@ ff_fig = ff.create_annotated_heatmap(
     colorscale=[[0, '#d3d3d3'],[1, '#ec008e']],
     showscale = True,
     ygap=5,
-    xgap=0,
+    xgap=20,
 )
 fig  = go.FigureWidget(ff_fig)
 fig.layout=layout_heatmap
@@ -130,6 +145,7 @@ fig.layout.annotations = ff_fig.layout.annotations
 fig.data[0].colorbar = dict(title='f1 Score', titleside = 'right')
 fig.update_layout(title_x=0.5)
 fig.update_xaxes(side="top")
+
 fig.show()
 
 # %%
