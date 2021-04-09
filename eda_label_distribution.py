@@ -102,20 +102,20 @@ plt.savefig("./pictures/positive_annotations_per_label_with_count.png", bbox_inc
 
 # %%
 # Seaborn does not support stacked bar charts. Therefore, I need to plot once the cumulative bar and the smaller one on top.
-# Now, calculate the percentages of positive annotations from round 3 and all annotations with df_ann_counts
+# Now, calculate the percentages of positive annotations from round 2 and all annotations with df_ann_counts
 total = df_ann_counts.loc[:, (1, "all")] + df_ann_counts.loc[:, (0, "all")]
-df_ann_perc_3 = df_ann_counts.loc[:, (1, "3")] / total
+df_ann_perc_2 = df_ann_counts.loc[:, (1, "2")] / total
 df_ann_perc_all = df_ann_counts.loc[:, (1, "all")] / total
-df_ann_per = pd.concat({"total": df_ann_perc_all, "3": df_ann_perc_3}, axis=1).reset_index()
+df_ann_per = pd.concat({"2": df_ann_perc_2, "total": df_ann_perc_all}, axis=1).reset_index()
 df_ann_per
 
 # %%
 f, ax = plt.subplots(figsize = (12,6))
 g = sns.barplot(x = 'category', y = 'total', data = df_ann_per,
-            label = '2', color = COLOR_STANDARD[1], edgecolor = 'w')
-sns.set_color_codes('muted')
-sns.barplot(x = 'category', y = '3', data = df_ann_per,
             label = '3', color = COLOR_STANDARD[2], edgecolor = 'w')
+sns.set_color_codes('muted')
+sns.barplot(x = 'category', y = '2', data = df_ann_per,
+            label = '2', color = COLOR_STANDARD[0], edgecolor = 'w')
 ax.legend(ncol = 2, loc = 'upper left')
 sns.despine(left = True, bottom = True)
 _ = g.set_title("Positive annotations per label")
@@ -126,7 +126,7 @@ _ = g.set_xticklabels(
     rotation=45, 
     horizontalalignment='right'
 )
-g.set_ylim(bottom=0, top=1);
-plt.savefig("./pictures/positive_annotations_per_label_stacked_ylim1.png", bbox_inches="tight");
+#g.set_ylim(bottom=0, top=1);
+plt.savefig("./pictures/positive_annotations_per_label_stacked.png", bbox_inches="tight");
 
 # %%
