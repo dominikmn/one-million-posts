@@ -42,6 +42,8 @@ df_ann_counts = df_ann_ext.groupby(["category", "ann_round"])["value"].value_cou
 df_ann_counts
 
 
+# %%
+
 # %% [markdown]
 # ## Bar chart
 #
@@ -55,7 +57,8 @@ def add_annotation_with_hue(ax, absolute_values):
 
     Args:
         ax: The axes of the plot.
-        absolute_values: DataFrame with values to annotate (x lables of plot as index, hue lables as columns). 
+        absolute_values: DataFrame with values to annotate
+            (x lables of plot as index, hue lables as columns; the order must be equivalent to the order in the plot!).
     """
     labels = absolute_values.index.to_list()
     hue_categories = absolute_values.columns.to_list()
@@ -87,8 +90,8 @@ _ = g.set_xticklabels(
     horizontalalignment='right'
 )
 g.set_ylim(bottom=0, top=1);
-#add_counts(g, df_ann_counts.loc[:, 1])
-plt.savefig("./pictures/positive_annotations_per_label.png", bbox_inches="tight")
+add_annotation_with_hue(g, df_ann_counts.reindex(columns=["all", "2", "3"], level="ann_round").loc[:, 1])
+plt.savefig("./pictures/positive_annotations_per_label_with_count.png", bbox_inches="tight")
 
 # %% [markdown]
 # ## Stacked Bar Chart
