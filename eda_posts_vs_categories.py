@@ -167,7 +167,7 @@ plt.clf()
 plt.colorbar(plot)
 
 ax = sns.barplot(data=d, y=d.index, x=d['article_count'], hue='posts_per_article', palette=palette, dodge=False)
-ax.set_ylabel('Categories')
+ax.set_ylabel('')
 ax.set_xlabel('Number of articles')
 ax.legend_.remove()
 ax.figure.set_size_inches(12,10)
