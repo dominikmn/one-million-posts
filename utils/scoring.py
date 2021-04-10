@@ -74,12 +74,12 @@ def get_score_df(df, best = False, threshold = 0.5):
             best_f1 = 0.0
             for th in np.arange(0.05, 0.96, 0.05):
                 y_pred_temp = df[lab_pred].apply(lambda x: 1 if x>=th else 0)
-                if f1_score(y_true, y_pred_temp)>best_th:
+                if f1_score(y_true, y_pred_temp)>best_f1:
                     best_th = th
                     best_f1 = f1_score(y_true, y_pred_temp)
         else:
             best_th = threshold
-        y_pred = df[lab_pred].apply(lambda x: 1 if x>=threshold else 0)
+        y_pred = df[lab_pred].apply(lambda x: 1 if x>=best_th else 0)
         score.append({
                             'label':label,
                             'threshold': best_th,
