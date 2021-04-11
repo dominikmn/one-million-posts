@@ -118,7 +118,7 @@ sns.barplot(x = 'category', y = '2', data = df_ann_per,
             label = '2', color = COLOR_STANDARD[0], edgecolor = 'w')
 ax.legend(ncol = 2, loc = 'upper left')
 sns.despine(left = True, bottom = True)
-_ = g.set_title("Positive annotations per label")
+#_ = g.set_title("Positive annotations per label")
 _ = g.set(ylabel="Proportion of positive annotations", xlabel="Label")
 _ = g.legend(title="Annotation round")
 _ = g.set_xticklabels(
