@@ -82,7 +82,7 @@ COLOR_STANDARD = ["#EC008E", "#bdbdbd", "#636363"]
 g = sns.barplot(data=df_ann_ext, x="category", y="value", hue="ann_round", ci=None, hue_order=["all", "2", "3"], palette=sns.color_palette(COLOR_STANDARD))
 sns.despine(left = True, bottom = True)
 _ = g.set_title("Positive annotations per label and annotation round")
-_ = g.set(ylabel="Positive annotations [%]", xlabel="Label")
+_ = g.set(ylabel="Proportion of positive annotations", xlabel="Label")
 _ = g.legend(title="Annotation round")
 _ = g.set_xticklabels(
     g.get_xticklabels(), 
@@ -119,7 +119,7 @@ sns.barplot(x = 'category', y = '2', data = df_ann_per,
 ax.legend(ncol = 2, loc = 'upper left')
 sns.despine(left = True, bottom = True)
 _ = g.set_title("Positive annotations per label")
-_ = g.set(ylabel="Positive annotations [%]", xlabel="Label")
+_ = g.set(ylabel="Proportion of positive annotations", xlabel="Label")
 _ = g.legend(title="Annotation round")
 _ = g.set_xticklabels(
     g.get_xticklabels(), 
