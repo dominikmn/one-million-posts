@@ -36,5 +36,5 @@ They are pused as `.py` files (see [#setup-modeling])
 
 ## Data analysis
 The notebooks are currently found in the main folder of this repo.
-They are pushed as `.py` files (see [#setup-notebooks]).
+They are pushed as `.py` files. See [Setup - Notebooks](#setup-notebooks).
 
