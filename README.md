@@ -1,64 +1,40 @@
 # one-million-posts
 
+Natural language processing projects based on the [one-million-posts dataset](https://ofai.github.io/million-post-corpus/).
 
-##
+## Setup
+1. Install [pyenv](https://github.com/pyenv/pyenv).
+2. Install python 3.8.5 via `pyenv install 3.8.5`
+3. Run `make setup`. 
 
-Requirements:
+### Setup - Modeling
+See [SETUP.md](SETUP.md).
 
-- pyenv with Python: 3.8.5
+### Setup - Notebooks
+The notebooks are pushed as `.py` files in the _python percentage script_ format (we like meaningful diffs).  
+These files have been created via the jupyter plugin [jupytext](https://github.com/mwouts/jupytext) which will automatically get installed if you execute `make setup` as part of the basic [setup](#setup).
+To get the actual notebook experience open them via jupyter. But even without jupytext you can run them just like any python file via `python -m file_name.py`.
 
-## Development Setup
+## Presentations
+The presentations are found in `./presentations/`
+| Presentation file | Description |
+|-|-|
+| [One Million Posts - Annotation composition.pdf](https://github.com/dominikmn/one-million-posts/blob/general-readme-update-midterm/presentations/One%20Million%20Posts%20-%20Annotation%20composition.pdf) | EDA concerning ticket [#24][i24], [#25][i25] |
 
-Use the requirements file in this repo to create a new environment.
+[i24]: https://github.com/dominikmn/one-million-posts/issues/24
+[i25]: https://github.com/dominikmn/one-million-posts/issues/25
 
-```BASH
-make setup
+## Modeling
+The models' code is found in  `./modeling/` in this repo.
+They are pused as `.py` files. See [Setup - Modeling](#setup-modeling)
+| Model | Description |
+|-|-|
+| | Zero Shot Classifier |
+| | Support Vector classifier |
+| | RandomForest Classifier |
+| [Naive Bayes](https://github.com/dominikmn/one-million-posts/blob/main/modeling/naive_bayes.py) | Naive Bayes classifier |
 
-#or
+## Data analysis
+The notebooks are currently found in the main folder of this repo.
+They are pushed as `.py` files. See [Setup - Notebooks](#setup-notebooks).
 
-pyenv local 3.8.5
-python -m venv .venv
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-The MLFLOW URI is not stored on git. There are two options to set it. Either locally in the .mlflow_uri file:
-
-```BASH
-echo http://127.0.0.1:5000/ > .mlflow_uri
-```
-
-this will create a local file where the uri is stored. Alternatively, one can export it as an environment variable with
-
-```bash
-export MLFLOW_URI=http://127.0.0.1:5000/
-```
-
-The code in the [config.py](modeling/config.py) will try to read the uri locally and if the file doesn't exist will look in the env var.. IF that is not set the URI will be empty in the code.
-
-### Usage of MLFlow
-
-#### Creating an MLFlow experiment
-
-Experiments can be created via the GUI or via [command line](https://www.mlflow.org/docs/latest/tracking.html#managing-experiments-and-runs-with-the-tracking-service-api) if one uses the local mlflow:
-
-```bash
-mlflow experiments create --experiment-name <name-of-experiment>
-```
-
-Check the local mlflow by running
-
-```bash
-mlflow ui
-```
-
-and opening the link [http://127.0.0.1:5000](http://127.0.0.1:5000).
-
-### Kill the gunicorn process
-
-If the port is in use (and the local mlflow cannot be run with `mlflow ui`) the process can be killed with
-
-```bash
-ps -A | grep gunicorn
-kill <PID>
-```
