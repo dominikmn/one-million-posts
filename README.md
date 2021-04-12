@@ -26,7 +26,7 @@ The presentations are found in `./presentations/`
 
 ## Modeling
 The models' code is found in  `./modeling/` in this repo.
-They are pused as `.py` files. See [Setup - Modeling](#setup-modeling)
+They are pushed as `.py` files. See [Setup - Modeling](#setup-modeling)
 | Model | Description |
 |-|-|
 | | Zero Shot Classifier |
