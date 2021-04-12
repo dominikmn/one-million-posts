@@ -137,6 +137,6 @@ def add_column_text(df: pd.DataFrame) -> pd.DataFrame:
         df: A copy of df, extended by `text`.
     """
     df_text = df.fillna(value={"body": "", "headline": ""})
-    df_text["text"] = df_text.body + df_text.headline
+    df_text["text"] = df_text.headline + " " + df_text.body
     df_text.text = df_text.text.str.replace("\n", " ").str.replace("\r", " ")
     return df_text
