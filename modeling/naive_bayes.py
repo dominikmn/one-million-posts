@@ -35,7 +35,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import f1_score, recall_score, precision_score
 
 # project utils
-from utils import loading, feature_engineering
+from utils import loading, feature_engineering, scoring
 
 # mlflow
 import mlflow
@@ -184,6 +184,7 @@ def run_training(model_details, mlflow_params) -> None:
             mlflow.log_params(mlflow_params)
             __compute_and_log_metrics(y_train, y_train_pred, "train")
             __compute_and_log_metrics(y_val, y_val_pred, "val")
+            scoring.log_cm(y_train, y_train_pred, y_val, y_val_pred)
 
             # saving the model
             logger.info("Saving model in the models folder")
