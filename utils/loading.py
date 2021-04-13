@@ -56,7 +56,7 @@ def load_cv_split():
     return df_cv_split
 
 
-def load_extended_posts(split:str=None ):
+def load_extended_posts(split:str=None, label:str=None):
     '''
     Load post table extended by annotations and staff.
     Args:
@@ -92,4 +92,6 @@ def load_extended_posts(split:str=None ):
     article_features = article_features.add_prefix('article_')
     df = df.merge(article_features, how='left', left_on='id_article', right_on='article_id_article').drop('article_id_article', axis=1)
     
+    if label:
+        df = df.dropna(subset=[label])
     return df
