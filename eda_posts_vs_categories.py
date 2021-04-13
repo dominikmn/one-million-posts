@@ -22,6 +22,7 @@ from utils import loading, feature_engineering
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 import seaborn as sns
 
 # %%
@@ -139,6 +140,38 @@ ax.figure.set_size_inches(12,10)
 #cross_compare['post_portion'] = cross_compare['post_count']/cross_compare['post_count'].sum()*100
 #cross_compare['post_portion'] = cross_compare['post_portion'].round(3)
 #cross_compare
+
+# %% [markdown]
+# ### colored by comments per article
+
+# %%
+df_posts["article_path_3"] = df_posts.article_path_split.apply(lambda x: "/".join(x[1:3]))
+
+
+cross_compare = df_posts.pivot_table(index='article_path_3', values=['id_post', 'id_article'], aggfunc='nunique')\
+    .rename(columns={'id_article':'article_count', 'id_post':'post_count'})
+cross_compare["posts_per_article"] = (cross_compare.post_count / cross_compare.article_count).astype(int)
+cross_compare.sort_values(by=['article_count', 'posts_per_article'], ascending=False, inplace=True)
+cross_compare
+
+# %%
+font = {'family' : 'normal',
+        'size'   : 16}
+matplotlib.rc('font', **font)
+
+cmap = sns.color_palette("light:#EC008E", as_cmap=True)
+palette = sns.color_palette("light:#EC008E", as_cmap=False)
+d=cross_compare[['article_count', "posts_per_article"]].head(20)
+plot = plt.scatter(x=d.index, y=d['posts_per_article'], c=d['posts_per_article'], cmap=cmap)
+plt.clf()
+plt.colorbar(plot)
+
+ax = sns.barplot(data=d, y=d.index, x=d['article_count'], hue='posts_per_article', palette=palette, dodge=False)
+ax.set_ylabel('')
+ax.set_xlabel('Number of articles')
+ax.legend_.remove()
+ax.figure.set_size_inches(12,10)
+plt.savefig("./pictures/num_articles_per_category.png", bbox_inches="tight")
 
 # %% [markdown]
 # ## Comment-label per path
