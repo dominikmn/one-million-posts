@@ -13,6 +13,13 @@
 #     name: python3
 # ---
 
+# %% [markdown]
+# # Proportion of positively annotated labels
+#
+# [Isssue 39](https://github.com/dominikmn/one-million-posts/issues/39)
+#
+# Visualize the imbalance of the available labels.
+
 # %%
 import pandas as pd
 import numpy as np
