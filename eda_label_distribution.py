@@ -14,11 +14,8 @@
 # ---
 
 # %% [markdown]
-# # Proportion of positively annotated labels
-#
-# [Isssue 39](https://github.com/dominikmn/one-million-posts/issues/39)
-#
-# Visualize the imbalance of the available labels.
+# # Eda issue 39 distribution of lables #39
+# Issue link: https://github.com/dominikmn/one-million-posts/issues/39
 
 # %%
 import pandas as pd
