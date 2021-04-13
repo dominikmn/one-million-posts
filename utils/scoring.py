@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-from sklearn.metrics import precision_score, recall_score, f1_score
+import mlflow
+from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
 
 category_map = {
                  'argumentation': 'label_argumentsused',
@@ -108,3 +109,12 @@ def print_winners(df):
             print(winner)
             print()    
 
+            
+def log_cm (y_true_train, y_pred_train, y_true_val, y_pred_val):
+    tn_tr, fp_tr, fn_tr, tp_tr = confusion_matrix(y_true_train, y_pred_train).ravel()
+    tn_val, fp_val, fn_val, tp_val = confusion_matrix(y_true_val, y_pred_val).ravel()
+    cm_tr = {'TN':tn_tr, 'FP':fp_tr, 'FN':fn_tr, 'TP':tp_tr}
+    cm_val = {'TN':tn_val, 'FP':fp_val, 'FN':fn_val, 'TP':tp_val}
+    mlflow.log_params({"cm-train": cm_tr, "cm-val": cm_val})
+
+        
