@@ -134,7 +134,7 @@ def predict_with_threshold(y_pred_proba: np.array, threshold: float) -> np.array
 
 
 # %%
-def run_training(model_details, mlflow_params) -> None:
+def run_training(model_details, mlflow_params, mlflow_tags) -> None:
     """Run model training
 
     Get the data and run the training. Log model parameters with MLFlow
@@ -186,6 +186,10 @@ def run_training(model_details, mlflow_params) -> None:
             __compute_and_log_metrics(y_val, y_val_pred, "val")
             scoring.log_cm(y_train, y_train_pred, y_val, y_val_pred)
 
+            # set cycle
+            for tag, state in mlflow_tags.items():
+                mlflow.set_tag(tag, state)
+
             # saving the model
             logger.info("Saving model in the models folder")
             t = datetime.now().strftime('%Y-%m-%d_%H%M%S')
@@ -220,6 +224,10 @@ if __name__ == "__main__":
         "grid_search_params": grid_search_params,
     }
 
-    run_training(model, mlflow_params)
+    mlflow_tags = {
+        "cycle2": "True",
+    }
+
+    run_training(model, mlflow_params, mlflow_tags)
 
 # %%
