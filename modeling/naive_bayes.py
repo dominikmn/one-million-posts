@@ -20,6 +20,7 @@ import numpy as np
 import re
 from datetime import datetime
 import logging
+from typing import Tuple
 
 # NLP imports
 from nltk.corpus import stopwords
@@ -51,35 +52,37 @@ logger.setLevel(logging.INFO)
 
 
 # %%
-def __get_data() -> (pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame):
+def __get_data(target_label:str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Get the data for training
+
+    Args:
+        target_label: The label to use as target. One of ['label_argumentsused', 'label_discriminating',
+            'label_inappropriate', 'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
+            'label_sentimentnegative', 'label_sentimentneutral', 'label_sentimentpositive',]
 
     Returns:
         X_train: The features of the training set
-        X_val: The features of the validation set
         y_train: All targets of the training set
+        X_val: The features of the validation set
         y_val: All targets of the validation set
     """
-    df_posts_train = loading.load_extended_posts(split="train")
-    df_posts_val = loading.load_extended_posts(split="val")
+    df_posts_train = loading.load_extended_posts(split="train", label=target_label)
+    df_posts_val = loading.load_extended_posts(split="val", label=target_label)
 
     df_train = feature_engineering.add_column_text(df_posts_train)
     df_val = feature_engineering.add_column_text(df_posts_val)
 
-    target_labels = ['label_argumentsused', 'label_discriminating', 'label_inappropriate',
-           'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
-           'label_sentimentnegative', 'label_sentimentneutral', 'label_sentimentpositive',]
     X_train = df_train.text
-    y_train = df_train[target_labels]
+    y_train = df_train[target_label]
     X_val = df_val.text
-    y_val = df_val[target_labels]
-    return X_train, X_val, y_train, y_val
+    y_val = df_val[target_label]
+    return X_train, y_train, X_val, y_val
 
 
 # %%
 def __compute_and_log_metrics(
     y_true: pd.Series, y_pred: pd.Series, split: str="train"
-) -> (float, float, float):
+) -> Tuple[float, float, float]:
     """Computes and logs metrics to mlflow and logger
 
     Args:
@@ -134,7 +137,7 @@ def predict_with_threshold(y_pred_proba: np.array, threshold: float) -> np.array
 
 
 # %%
-def run_training(model_details, mlflow_params, mlflow_tags) -> None:
+def run_training(X_train, y_train, X_val, y_val, model_details, mlflow_params, mlflow_tags) -> None:
     """Run model training
 
     Get the data and run the training. Log model parameters with MLFlow
@@ -144,57 +147,47 @@ def run_training(model_details, mlflow_params, mlflow_tags) -> None:
         model_details: Dictionary with a human readable `name` and a sklearn.estimator `model`.
         mlflow_params: Dictionary with parameters that shall be tracked with MLFlow.
     """
-    logger.info(f"Getting the data")
-    X_train, X_val, y_train_multi, y_val_multi = __get_data()
-
     logger.info("Training simple model and tracking with MLFlow")
     mlflow.set_tracking_uri(TRACKING_URI)
     mlflow.set_experiment(EXPERIMENT_NAME)
 
-    # train model for each label
-    for label in y_train_multi.columns:
-        y_train = y_train_multi[label]
-        y_val = y_val_multi[label]
-        mlflow_params["label"] = label
+    with mlflow.start_run():
+        # train model and predict
+        model = model_details["model"].fit(X_train, y_train)
+        y_train_pred = model.predict(X_train)
+        y_val_pred = model.predict(X_val)
 
-        logger.info(f"Training a simple {model_details['name']} for {label}")
-        with mlflow.start_run():
-            # train model and predict
-            model = model_details["model"].fit(X_train, y_train)
-            y_train_pred = model.predict(X_train)
-            y_val_pred = model.predict(X_val)
+        # select best threshold if model implements predict_proba
+        if callable(getattr(model, "predict_proba", None)):
+            y_train_proba = model.predict_proba(X_train)[:, 1]
+            y_val_proba = model.predict_proba(X_val)[:, 1]
+            threshold = calculate_best_threshold(y_train, y_train_proba)
+            mlflow_params["threshold"] = threshold
+            y_train_pred = predict_with_threshold(y_train_proba, threshold)
+            y_val_pred = predict_with_threshold(y_val_proba, threshold)
 
-            # select best threshold if model implements predict_proba
-            if callable(getattr(model, "predict_proba", None)):
-                y_train_proba = model.predict_proba(X_train)[:, 1]
-                y_val_proba = model.predict_proba(X_val)[:, 1]
-                threshold = calculate_best_threshold(y_train, y_train_proba)
-                mlflow_params["threshold"] = threshold
-                y_train_pred = predict_with_threshold(y_train_proba, threshold)
-                y_val_pred = predict_with_threshold(y_val_proba, threshold)
+        # store best parameters if model is GridSearch
+        if isinstance(model, GridSearchCV):
+            best_params = model.best_params_
+            if 'vectorizer__stop_words' in best_params.keys() and best_params['vectorizer__stop_words']!=None:
+                best_params['vectorizer__stop_words'] = "NLTK-German"
+            mlflow_params["best_params"] = best_params
 
-            # store best parameters if model is GridSearch
-            if isinstance(model, GridSearchCV):
-                best_params = model.best_params_
-                if 'vectorizer__stop_words' in best_params.keys() and best_params['vectorizer__stop_words']!=None:
-                    best_params['vectorizer__stop_words'] = "NLTK-German"
-                mlflow_params["best_params"] = best_params
+        # log parameters and metrics
+        mlflow.log_params(mlflow_params)
+        __compute_and_log_metrics(y_train, y_train_pred, "train")
+        __compute_and_log_metrics(y_val, y_val_pred, "val")
+        scoring.log_cm(y_train, y_train_pred, y_val, y_val_pred)
 
-            # log parameters and metrics
-            mlflow.log_params(mlflow_params)
-            __compute_and_log_metrics(y_train, y_train_pred, "train")
-            __compute_and_log_metrics(y_val, y_val_pred, "val")
-            scoring.log_cm(y_train, y_train_pred, y_val, y_val_pred)
+        # set cycle
+        for tag, state in mlflow_tags.items():
+            mlflow.set_tag(tag, state)
 
-            # set cycle
-            for tag, state in mlflow_tags.items():
-                mlflow.set_tag(tag, state)
-
-            # saving the model
-            logger.info("Saving model in the models folder")
-            t = datetime.now().strftime('%Y-%m-%d_%H%M%S')
-            path = f"models/{model_details['name']}_{label}_{t}"
-            save_model(sk_model=model, path=path)
+        # saving the model
+        logger.info("Saving model in the models folder")
+        t = datetime.now().strftime('%Y-%m-%d_%H%M%S')
+        path = f"models/{model_details['name']}_{mlflow_params['label']}_{t}"
+        save_model(sk_model=model, path=path)
 
 
 # %%
@@ -228,6 +221,15 @@ if __name__ == "__main__":
         "cycle2": "True",
     }
 
-    run_training(model, mlflow_params, mlflow_tags)
+    TARGET_LABELS = ['label_argumentsused', 'label_discriminating', 'label_inappropriate',
+        'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
+        'label_sentimentnegative', 'label_sentimentpositive',]
+    for label in TARGET_LABELS:
+        logger.info(f"Getting the data")
+        X_train, y_train, X_val, y_val = __get_data(label)
+
+        logger.info(f"Training a simple {model['name']} for {label}")
+        mlflow_params["label"] = label
+        run_training(X_train, y_train, X_val, y_val, model, mlflow_params, mlflow_tags)
 
 # %%
