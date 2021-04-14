@@ -44,7 +44,6 @@ def split_Xy(df, y_cols):
 
 
 
-
 def get_pipe_grid():
     pipe = Pipeline(steps = [('vectorizer', TfidfVectorizer()), ('classifier',RandomForestClassifier(random_state=SEED,class_weight='balanced_subsample'))])
     grid = {
@@ -144,8 +143,7 @@ def train_rf():
         'label_sentimentneutral',
        'label_sentimentpositive']
     
-    X_train, y_train = split_Xy(data_train, y_cols)
-    X_val, y_val = split_Xy(data_val, y_cols)
+
     
     pipe, grid = get_pipe_grid()
     grid_mlflow = {
@@ -160,6 +158,8 @@ def train_rf():
     
     
     for label in y_cols:
+        X_train, y_train = split_Xy(data_train.dropna(subset = [label]), y_cols)
+        X_val, y_val = split_Xy(data_val, y_cols)
         endrun()
         start_mlflow()
         model,best_params, y_pred_val, y_pred_train, y_pred_val_proba, y_pred_train_proba = cv_rf(X_train, y_train, X_val, pipe, grid, label)
@@ -175,6 +175,7 @@ def train_rf():
         f1_train = f1_score(y_train[label], y_pred_th_train)
         precision_train = precision_score(y_train[label], y_pred_th_train)
         recall_train = recall_score(y_train[label], y_pred_th_train)
+        scoring.log_cm(y_train[label], y_pred_th_train, y_val[label], y_pred_th_val)
         log_metrics(f1_val, recall_val, precision_val, f1_train, recall_train, precision_train)
         sv_model(params, model)
         print(f'{label} f1-score(validation): {f1_val}')
