@@ -26,12 +26,15 @@ import matplotlib.pyplot as plt
 # %% tags=[]
 df = loading.load_extended_posts()
 
+# %%
+df = feature_engineering.add_column_ann_round(df)
+
 
 # %% [markdown]
 # Defining function for top words for labels
 
 # %%
-def top_words_label(df, label, text, stop=False, stopwords=None, plot=True, return_list=True):
+def top_words_label(df, label, text, stop=False, stopwords=None, plot=True, return_list=True, all_plots=True):
     
     df_clean=df.dropna(subset=[label])
     df_clean.loc[:,text]=cleaning.strip_punct(df_clean[text])
@@ -43,7 +46,7 @@ def top_words_label(df, label, text, stop=False, stopwords=None, plot=True, retu
     topwords_neg = feature_engineering.calculate_top_words(df_neg[text], relative=True)
     topwords_pos_rel = topwords_pos.subtract(topwords_neg, fill_value=0).sort_values(ascending=False)
     topwords_neg_rel = (-topwords_pos_rel).sort_values(ascending=False)
-    if plot:
+    if plot and all_plots:
         print(f'Order of plots:\nTop left: {label} = positive\nTop right: {label} = negative\nBottom left: {label} = positive, specific\nBottom right: {label} = negative, specific')
         plt.figure(figsize = (12, 12))
         plt.subplot(2, 2, 1)
@@ -55,6 +58,15 @@ def top_words_label(df, label, text, stop=False, stopwords=None, plot=True, retu
         plt.subplot(2, 2, 4)
         visualizing.plot_wordcloud_freq(topwords_neg_rel, colormap='OrRd')
         plt.show()
+    elif plot and all_plots==False:
+        plt.figure(figsize=(12,6))
+        plt.subplot(1, 2, 2)
+        visualizing.plot_wordcloud_freq(topwords_neg_rel, colormap='binary')
+        plt.subplot(1, 2, 1)
+        visualizing.plot_wordcloud_freq(topwords_pos_rel,colormap='RdPu')
+        
+        plt.show()
+                    
     if return_list:
         return topwords_pos, topwords_neg, topwords_pos_rel, topwords_neg_rel
 
@@ -283,3 +295,82 @@ print(f'top words for Sentiment Positive negative:\n{spo_neg[:10]}')
 print(f'top words for Sentiment Positive positive specific:\n{spo_pos_rel[:10]}')
 print(f'top words for Sentiment Positive negative specific:\n{spo_neg_rel[:10]}')
 
+
+# %% [markdown]
+# ### Wordclouds by annotation round
+
+# %% [markdown]
+# ### negative
+
+# %%
+top_words_label(df.query('ann_round==2'), 'label_sentimentnegative', 'body', True, stopwords, True, False, False)
+plt.savefig('./pictures/wc_negative_round2.png')
+
+# %%
+top_words_label(df, 'label_sentimentnegative', 'body', True, stopwords, True, False, False)
+plt.savefig('./pictures/wc_negative_all.png')
+
+# %% [markdown]
+# ### positive
+
+# %%
+top_words_label(df.query('ann_round==2'), 'label_sentimentpositive', 'body', True, stopwords, True, False, False)
+
+# %%
+top_words_label(df, 'label_sentimentpositive', 'body', True, stopwords, True, False, False)
+
+# %% [markdown]
+# ### Discriminating
+
+# %%
+top_words_label(df.query('ann_round==2'), 'label_discriminating', 'body', True, stopwords, True, False, False)
+
+# %%
+top_words_label(df, 'label_discriminating', 'body', True, stopwords, True, False, False)
+
+# %% [markdown] tags=[]
+# ### inappropriate
+
+# %%
+top_words_label(df.query('ann_round==2'), 'label_inappropriate', 'body', True, stopwords, True, False, False)
+
+# %%
+top_words_label(df, 'label_inappropriate', 'body', True, stopwords, True, False, False)
+
+# %% [markdown]
+# ## Off-Topic
+
+# %%
+top_words_label(df.query('ann_round==2'), 'label_offtopic', 'body', True, stopwords, True, False, False)
+
+# %%
+top_words_label(df, 'label_offtopic', 'body', True, stopwords, True, False, False)
+
+# %% [markdown]
+# ## Arguments used
+
+# %%
+top_words_label(df.query('ann_round==2'), 'label_argumentsused', 'body', True, stopwords, True, False, False)
+
+# %%
+top_words_label(df, 'label_argumentsused', 'body', True, stopwords, True, False, False)
+
+# %% [markdown] tags=[]
+# ### Personal stories
+
+# %%
+top_words_label(df.query('ann_round==2'), 'label_personalstories', 'body', True, stopwords, True, False, False)
+
+# %%
+top_words_label(df, 'label_personalstories', 'body', True, stopwords, True, False, False)
+
+# %% [markdown]
+# ### possibly feedback
+
+# %%
+top_words_label(df.query('ann_round==2'), 'label_possiblyfeedback', 'body', True, stopwords, True, False, False)
+
+# %%
+top_words_label(df, 'label_possiblyfeedback', 'body', True, stopwords, True, False, False)
+
+# %%
