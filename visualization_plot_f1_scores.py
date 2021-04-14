@@ -18,18 +18,13 @@
 # Issue link: https://github.com/dominikmn/one-million-posts/issues/43
 
 # %%
-from transformers import pipeline
 import pandas as pd
 import numpy as np
-from tqdm import tqdm
 from utils import loading, feature_engineering, scoring
 from sklearn.metrics import precision_score, recall_score, f1_score
-import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
-import plotly.io as pio
-import matplotlib as plt
 
 # %% [markdown]
 # In order to use plotly from jupyterlab install the following from your terminal:
