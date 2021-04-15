@@ -10,9 +10,17 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 
-from utils import modeling
+from utils import modeling as m
 
 import mlflow
+from modeling.config import TRACKING_URI, EXPERIMENT_NAME#, TRACKING_URI_DEV
+import logging
+
+# set logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s: %(message)s")
+logging.getLogger("pyhive").setLevel(logging.CRITICAL)  # avoid excessive logs
+logger.setLevel(logging.INFO)
 
 
 if __name__ == "__main__":
@@ -50,13 +58,21 @@ if __name__ == "__main__":
     
     IS_DEVELOPMENT = True
 
-    data = modeling.Posts()
-    mlflow_logger = modeling.MLFlowLogger(is_dev=IS_DEVELOPMENT, params=mlflow_params, tags=mlflow_tags)
-    training = modeling.Modeling(data, pipeline, mlflow_logger)
+    data = m.Posts()
+    mlflow_logger = m.MLFlowLogger(
+        uri=TRACKING_URI,
+        experiment=EXPERIMENT_NAME,
+        is_dev=IS_DEVELOPMENT,
+        params=mlflow_params,
+        tags=mlflow_tags
+    )
+    training = m.Modeling(data, pipeline, mlflow_logger)
     for label in TARGET_LABELS[:1]:
+        logger.info(f"-"*20)
+        logger.info(f"Target: {label}")
+        data.set_label(label)
+        training.train()
+        training.evaluate(["train", "val"])
         with mlflow.start_run() as run:
-            data.set_label(label)
-            training.train()
-            training.evaluate(["train", "val"])
             mlflow_logger.log()
     

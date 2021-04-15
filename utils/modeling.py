@@ -14,7 +14,7 @@ from utils import loading, feature_engineering
 # mlflow
 import mlflow
 from mlflow.sklearn import save_model
-from modeling.config import TRACKING_URI, EXPERIMENT_NAME#, TRACKING_URI_DEV
+
 
 # set logging
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ class Posts:
 class MLFlowLogger:
     """MLFlowLogger will collect all params, tags, and metrics to log.
     """
-    def __init__(self, uri:str=None, experiment:str=None, is_dev:bool=True,
+    def __init__(self, uri:str, experiment:str, is_dev:bool=True,
         params: Dict=dict(), tags: Dict=dict(), metrics: Dict=dict()):
         self.is_dev = is_dev
         self.model_path = Path("./models")
@@ -113,13 +113,6 @@ class MLFlowLogger:
         self.tags = tags if tags else {}
         self.metrics = metrics if metrics else {}
         self.model = None
-        #if is_dev:
-            #uri = TRACKING_URI_DEV
-            #self.model_path = self.model_path / "dev"
-        if not uri:
-            uri = TRACKING_URI
-        if not experiment:
-            experiment = EXPERIMENT_NAME
         mlflow.set_tracking_uri(uri)
         mlflow.set_experiment(experiment)
 
