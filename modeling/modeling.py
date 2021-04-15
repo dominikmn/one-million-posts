@@ -154,10 +154,11 @@ class Training:
         data:
         estimator:
     """
-    def __init__(self, data:Posts, estimator, mlflow_logger):
+    def __init__(self, data:Posts, estimator, mlflow_logger, fit_threshold:bool=True):
         self.data = data
         self.estimator = estimator
         self.mlflow_logger = mlflow_logger
+        self.fit_threshold = fit_threshold
         self.model = None
         self.threshold = None
     
@@ -204,7 +205,7 @@ class Training:
         self.estimator.fit(X_train, y_train) #ToDo save to mlflow logger
 
         # select best threshold if model implements predict_proba
-        if callable(getattr(self.estimator, "predict_proba", None)):
+        if self.fit_threshold and callable(getattr(self.estimator, "predict_proba", None)):
             y_train_proba = self.estimator.predict_proba(X_train)[:, 1]
             self.threshold = self.calculate_best_threshold(y_train, y_train_proba)
             self.mlflow_logger.add_param("threshold", self.threshold)
