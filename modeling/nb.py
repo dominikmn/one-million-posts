@@ -12,6 +12,9 @@ from sklearn.pipeline import Pipeline
 
 from modeling import modeling
 
+import mlflow
+
+
 if __name__ == "__main__":
     pipeline = Pipeline([
         ("vectorizer", CountVectorizer()),
@@ -25,14 +28,35 @@ if __name__ == "__main__":
     }
     gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=3, verbose=1)
 
+    # MLFlow params have limited characters, therefore stopwords must not be given as list
+    grid_search_params = param_grid.copy()
+    grid_search_params["vectorizer__stop_words"] = ["NLTK-German", None]
+
+    model = {"name": "NaiveBayes", "model": gs}
+    mlflow_params = {
+        "vectorizer": "count",
+        "normalization": "lower",
+        "stopwords": "nltk-german",
+        "model": model["name"],
+        "grid_search_params": grid_search_params,
+    }
+    mlflow_tags = {
+        "cycle2": True,
+    }
+
     TARGET_LABELS = ['label_argumentsused', 'label_discriminating', 'label_inappropriate',
         'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
         'label_sentimentnegative', 'label_sentimentpositive',]
     
+    IS_DEVELOPMENT = True
+
     data = modeling.Posts()
-    training = modeling.Training(data, gs)
+    mlflow_logger = modeling.MLFlowLogger(is_dev=IS_DEVELOPMENT, params=mlflow_params, tags=mlflow_tags)
+    training = modeling.Training(data, pipeline, mlflow_logger)
     for label in TARGET_LABELS[:1]:
-        data.set_label(label)
-        training.train()
-        training.evaluate(["train", "val"])
+        with mlflow.start_run() as run:
+            data.set_label(label)
+            training.train()
+            training.evaluate(["train", "val"])
+            mlflow_logger.log()
     

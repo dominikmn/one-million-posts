@@ -1,10 +1,11 @@
 import pandas as pd
 import numpy as np
 import logging
-from typing import Tuple
+from pathlib import Path
+from typing import Tuple, Dict
 
 # evaluation imports
-from sklearn.metrics import f1_score, recall_score, precision_score
+from sklearn.metrics import f1_score, recall_score, precision_score, confusion_matrix
 from sklearn.model_selection import GridSearchCV
 
 # one-million-post utils
@@ -13,7 +14,7 @@ from utils import loading, feature_engineering
 # mlflow
 import mlflow
 from mlflow.sklearn import save_model
-from modeling.config import TRACKING_URI, EXPERIMENT_NAME
+from modeling.config import TRACKING_URI, EXPERIMENT_NAME#, TRACKING_URI_DEV
 
 # set logging
 logger = logging.getLogger(__name__)
@@ -37,17 +38,18 @@ def compute_and_log_metrics(
         f1: The f1_score
         precision: The precision_score
         recall: The recall_score
+        cm:
     """
     f1 = f1_score(y_true, y_pred)
     precision = precision_score(y_true, y_pred)
     recall = recall_score(y_true, y_pred)
 
-    logger.info(
-        f"Performance on "
-        + str(split)
-        + f" set: F1 = {f1:.1f}, precision = {precision:.1%}, recall = {recall:.1%}"
-    )
-    return f1, precision, recall
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    cm = {'TN':tn, 'FP':fp, 'FN':fn, 'TP':tp}
+
+    logger.info(f"Performance on {split} set: F1 = {f1:.1f}, precision = {precision:.1%}, recall = {recall:.1%}")
+    logger.info(f"Confusion matrix: {cm}")
+    return f1, precision, recall, cm
             
 
 def predict_with_threshold(y_pred_proba: np.array, threshold: float) -> np.array:
@@ -78,6 +80,8 @@ class Posts:
         if split:
             filter_frame = pd.read_csv(f'./data/ann2_{split}.csv', header=None, index_col=0, names=['id_post'])
             df = self.df.merge(filter_frame, how='inner', on='id_post')
+        else:
+            df = self.df.copy()
         if label:
             self.current_label = label
             df = df.dropna(subset=[self.current_label])
@@ -98,19 +102,64 @@ class Posts:
             raise ValueError(message)
 
 
+class MLFlowLogger:
+    def __init__(self, uri:str=None, experiment:str=None, is_dev:bool=True, params: Dict=dict(), tags: Dict=dict(), metrics: Dict=dict()):
+        self.is_dev = is_dev
+        self.model_path = Path("./models")
+        self.params = params if params else {}
+        self.tags = tags if tags else {}
+        self.metrics = metrics if metrics else {}
+        self.model = None
+        #if is_dev:
+            #uri = TRACKING_URI_DEV
+            #self.model_path = self.model_path / "dev"
+        if not uri:
+            uri = TRACKING_URI
+        if not experiment:
+            experiment = EXPERIMENT_NAME
+        mlflow.set_tracking_uri(uri)
+        mlflow.set_experiment(experiment)
+
+    def add_param(self, key:str, value:str):
+        self.params[key] = value
+
+    def add_tag(self, name:str, state:bool):
+        self.tags[name] = state
+
+    def add_metric(self, name:str, value):
+        self.metrics[name] = value
+
+    def log(self):
+        if not self.is_dev:
+            mlflow.log_params(self.params)
+            mlflow.log_metrics(self.metrics)
+            mlflow.set_tags(self.tags)
+            self._save_model()
+
+    def _save_model(self):
+        """
+        """
+        if self.model:
+            logger.info(f"Saving model in {self.model_path}.")
+            time_now = datetime.now().strftime('%Y-%m-%d_%H%M%S')
+            model_type = self.params["model"]
+            label = self.params["label"]
+            path = self.model_path / f"{model_type}_{label}_{time_now}"
+            save_model(sk_model=self.model, path=path)
+
+
 class Training:
     """
     Args:
         data:
         estimator:
     """
-    
-    def __init__(self, data:Posts, estimator):
+    def __init__(self, data:Posts, estimator, mlflow_logger):
         self.data = data
         self.estimator = estimator
+        self.mlflow_logger = mlflow_logger
         self.model = None
         self.threshold = None
-        
     
     def calculate_best_threshold(self, y_true: pd.Series, y_pred_proba: np.array) -> float:
         """Calculate the best threshold value for classification.
@@ -132,17 +181,6 @@ class Training:
                 best_f1 = f1_temp
         return best_th
 
-
-    def save_model_to_drive(self, model):
-        """
-        """
-        # ToDo get model info
-        logger.info("Saving model in the models folder")
-        t = datetime.now().strftime('%Y-%m-%d_%H%M%S')
-        path = f"models/{model_details['name']}_{mlflow_params['label']}_{t}"
-        save_model(sk_model=model, path=path)
-
-
     def train(self): #, mlflow_logger):
         """Trains the estimator.
 
@@ -158,29 +196,28 @@ class Training:
             mlflow_params:
             threshold:
         """
-        mlflow_params = {} #ToDo fix mlflow
-
+        logger.info(f"Get X, y")
         X_train, y_train = self.data.get_X_y(split="train")
+        self.mlflow_logger.add_param("label", self.data.current_label)
         
         logger.info(f"Fit model")
-        model = self.estimator.fit(X_train, y_train) #ToDo save to mlflow logger
+        self.estimator.fit(X_train, y_train) #ToDo save to mlflow logger
 
         # select best threshold if model implements predict_proba
-        if callable(getattr(model, "predict_proba", None)):
-            y_train_proba = model.predict_proba(X_train)[:, 1]
+        if callable(getattr(self.estimator, "predict_proba", None)):
+            y_train_proba = self.estimator.predict_proba(X_train)[:, 1]
             self.threshold = self.calculate_best_threshold(y_train, y_train_proba)
-            mlflow_params["threshold"] = self.threshold #ToDo save to mlflow logger
+            self.mlflow_logger.add_param("threshold", self.threshold)
 
         # store best parameters if model is GridSearch
-        if isinstance(model, GridSearchCV):
-            best_params = model.best_params_
+        if isinstance(self.estimator, GridSearchCV):
+            best_params = self.estimator.best_params_
             if 'vectorizer__stop_words' in best_params.keys() and best_params['vectorizer__stop_words']!=None:
                 best_params['vectorizer__stop_words'] = "NLTK-German"
-            mlflow_params["best_params"] = best_params #ToDo save to mlflow logger
+            self.mlflow_logger.add_param("best_params", best_params)
 
-        self.model = model
-        #self.save_model_to_drive(model)
-        return model
+        self.model = self.estimator
+        return self.model
 
 
     def evaluate(self, splits=["train", "val"]):
@@ -198,7 +235,11 @@ class Training:
                 else:
                     y_pred = model.predict(X)
 
-                compute_and_log_metrics(y, y_pred, split)
+                f1, precision, recall, cm = compute_and_log_metrics(y, y_pred, split)
+                self.mlflow_logger.add_metric(f"{split} - F1", f1)
+                self.mlflow_logger.add_metric(f"{split} - precision", precision)
+                self.mlflow_logger.add_metric(f"{split} - recall", recall)
+                self.mlflow_logger.add_param(f"cm-{split}", cm)
         else:
             logger.info(f"No model available! Please run `train()` first.")
 
