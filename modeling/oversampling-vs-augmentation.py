@@ -1,6 +1,9 @@
 from utils import loading, scoring, augmenting
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics import f1_score, recall_score, precision_score
 from nltk.corpus import stopwords
@@ -9,9 +12,10 @@ import numpy as np
 import pandas as pd
 import mlflow
 from mlflow.sklearn import save_model
-from modeling.config import TRACKING_URI, EXPERIMENT_NAME
+from modeling.config import TRACKING_URI
 from datetime import datetime
 
+EXPERIMENT_NAME = 'oversampling-vs. augmentation'
 
 def start_mlflow():
     # # !ps -A | grep gunicorn
@@ -45,26 +49,48 @@ def sv_model(params, model):
 def endrun():
     mlflow.end_run()
 
-
-    
-if __name__=='__main__':
-    df_train = loading.load_extended_posts(split = 'train')
-    df_val = loading.load_extended_posts(split = 'val')
-
-    df_train.fillna(value={'headline':'', 'body':''}, inplace=True)
-    df_train['text'] = df_train['headline']+" "+df_train['body']
-    df_train['text']=df_train.text.str.replace('\n',' ').str.replace('\r', ' ')
-    df_val.fillna(value={'headline':'', 'body':''}, inplace=True)
-    df_val['text'] = df_val['headline']+" "+df_val['body']
-    df_val['text']=df_val.text.str.replace('\n',' ').str.replace('\r', ' ')
-
-    y_cols = ['label_argumentsused', 'label_discriminating', 'label_inappropriate', 'label_offtopic', 'label_personalstories', 'label_possiblyfeedback', 'label_sentimentnegative', 'label_sentimentpositive']
-
+def make_run(clf, model_name, df_train, df_val, y_cols):
     for label in y_cols:
         endrun()
         start_mlflow()
         params = params = {
-        "model": "NB_oversampling_vs_augmenting",
+        "model": model_name,
+        "label": label,
+        "vectorizer": "tfidf",
+        "normalization": "lower",
+        "aug_or_os": "none"}
+    
+        df_temp = df_train.dropna(subset=[label]).copy()
+        X_train= df_temp['text']
+        y_train = df_temp[label]
+        X_val = df_val['text']
+        y_val=  df_val[label]
+        vec = TfidfVectorizer(stop_words=stopwords)
+        X_train = vec.fit_transform(X_train)
+        X_val = vec.transform(X_val)
+        mod = clf.fit(X_train, y_train)
+        y_pred_train = mod.predict(X_train)
+        y_pred_val = mod.predict(X_val)
+    
+        
+        f1_val = f1_score(y_val, y_pred_val)
+        precision_val = precision_score(y_val, y_pred_val)
+        recall_val = recall_score(y_val, y_pred_val)
+        f1_train = f1_score(y_train, y_pred_train)
+        precision_train = precision_score(y_train, y_pred_train)
+        recall_train = recall_score(y_train, y_pred_train)
+        log_metrics(f1_val, recall_val, precision_val, f1_train, recall_train, precision_train)
+        scoring.log_cm(y_train, y_pred_train, y_val, y_pred_val)
+        params['sampling_strategy']=0
+        sv_model(params, mod)
+        endrun()
+    
+    
+    for label in y_cols:
+        endrun()
+        start_mlflow()
+        params = params = {
+        "model": model_name,
         "label": label,
         "vectorizer": "tfidf",
         "normalization": "lower",
@@ -85,12 +111,11 @@ if __name__=='__main__':
                 vec = TfidfVectorizer(stop_words=stopwords)
                 X_over = vec.fit_transform(pd.Series(X_over.ravel()))
                 X_val = vec.transform(X_val)
-                nb = MultinomialNB()
-                mod = nb.fit(X_over, y_over)
-                y_pred_train = nb.predict(X_over)
-                y_pred_val = nb.predict(X_val)
+                mod = clf.fit(X_over, y_over)
+                y_pred_train = mod.predict(X_over)
+                y_pred_val = mod.predict(X_val)
                 f1_temp = f1_score(y_val, y_pred_val)
-                if f1_temp>best_f1_val:
+                if f1_temp>=best_f1_val:
                     best_perc = perc
                     best_f1_val = f1_temp
 
@@ -116,7 +141,7 @@ if __name__=='__main__':
         endrun()
         start_mlflow()
         params = params = {
-        "model": "NB_oversampling_vs_augmenting",
+        "model": model_name,
         "label": label,
         "vectorizer": "tfidf",
         "normalization": "lower",
@@ -136,12 +161,11 @@ if __name__=='__main__':
                 vec = TfidfVectorizer(stop_words=stopwords)
                 X_train = vec.fit_transform(X_train)
                 X_val = vec.transform(X_val)
-                nb = MultinomialNB()
-                mod = nb.fit(X_train, y_train)
-                y_pred_train = nb.predict(X_train)
-                y_pred_val = nb.predict(X_val)
+                mod = clf.fit(X_train, y_train)
+                y_pred_train = mod.predict(X_train)
+                y_pred_val = mod.predict(X_val)
                 f1_temp = f1_score(y_val, y_pred_val)
-                if f1_temp>best_f1_val:
+                if f1_temp>=best_f1_val:
                     best_perc = perc
                     best_f1_val = f1_temp
 
@@ -162,3 +186,24 @@ if __name__=='__main__':
         params['sampling_strategy']=round(best_perc, 2)
         sv_model(params, best_model)
         endrun()
+    
+if __name__=='__main__':
+    df_train = loading.load_extended_posts(split = 'train')
+    df_val = loading.load_extended_posts(split = 'val')
+
+    df_train.fillna(value={'headline':'', 'body':''}, inplace=True)
+    df_train['text'] = df_train['headline']+" "+df_train['body']
+    df_train['text']=df_train.text.str.replace('\n',' ').str.replace('\r', ' ')
+    df_val.fillna(value={'headline':'', 'body':''}, inplace=True)
+    df_val['text'] = df_val['headline']+" "+df_val['body']
+    df_val['text']=df_val.text.str.replace('\n',' ').str.replace('\r', ' ')
+
+    y_cols = ['label_argumentsused', 'label_discriminating', 'label_inappropriate', 'label_offtopic', 'label_personalstories', 'label_possiblyfeedback', 'label_sentimentnegative', 'label_sentimentpositive']
+
+    models = [{'clf': MultinomialNB(), 'model_name': 'NB'},
+              {'clf': SVC(random_state = 42, kernel = 'linear', C = 1.0), 'model_name': 'SVC'},
+              {'clf': RandomForestClassifier(random_state = 42, max_depth =  5, min_samples_leaf = 10), 'model_name': 'RF'},
+              {'clf': LogisticRegression(random_state = 42), 'model_name': 'LR'}
+             ]
+    for model in models:
+        make_run(model['clf'], model['model_name'], df_train, df_val, y_cols)
