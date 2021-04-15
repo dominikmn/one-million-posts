@@ -27,7 +27,7 @@ logger.setLevel(logging.INFO)
 def compute_and_log_metrics(
     y_true: pd.Series, y_pred: pd.Series, split: str="train"
 ) -> Tuple[float, float, float]:
-    """Computes and logs metrics to mlflow and logger
+    """Computes and logs metrics logger
 
     Args:
         y_true: The true target classification
@@ -38,7 +38,7 @@ def compute_and_log_metrics(
         f1: The f1_score
         precision: The precision_score
         recall: The recall_score
-        cm:
+        cm: Dictionary with the confusion matrix
     """
     f1 = f1_score(y_true, y_pred)
     precision = precision_score(y_true, y_pred)
@@ -103,7 +103,10 @@ class Posts:
 
 
 class MLFlowLogger:
-    def __init__(self, uri:str=None, experiment:str=None, is_dev:bool=True, params: Dict=dict(), tags: Dict=dict(), metrics: Dict=dict()):
+    """MLFlowLogger will collect all params, tags, and metrics to log.
+    """
+    def __init__(self, uri:str=None, experiment:str=None, is_dev:bool=True,
+        params: Dict=dict(), tags: Dict=dict(), metrics: Dict=dict()):
         self.is_dev = is_dev
         self.model_path = Path("./models")
         self.params = params if params else {}
@@ -130,6 +133,7 @@ class MLFlowLogger:
         self.metrics[name] = value
 
     def log(self):
+        """Log params, metrics, and tags to MLFlow if is_def is False"""
         if not self.is_dev:
             mlflow.log_params(self.params)
             mlflow.log_metrics(self.metrics)
@@ -137,7 +141,7 @@ class MLFlowLogger:
             self._save_model()
 
     def _save_model(self):
-        """
+        """Save model in `./models` as `<model_type>_<label>_<time>`
         """
         if self.model:
             logger.info(f"Saving model in {self.model_path}.")
@@ -149,10 +153,13 @@ class MLFlowLogger:
 
 
 class Modeling:
-    """
+    """Class to handle the modeling with training and evaluation.
+
     Args:
-        data:
-        estimator:
+        data: A Post object handling the data
+        estimator: An sklearn.estimator
+        mlflow_logger: An MLFlowLogger object collecting all params, metrics, and tags.
+        fit_threshold: Fit a best decision threshold if True. Optional, default: True
     """
     def __init__(self, data:Posts, estimator, mlflow_logger, fit_threshold:bool=True):
         self.data = data
@@ -186,16 +193,11 @@ class Modeling:
         """Trains the estimator.
 
         If model implements predict_proba, calculate the best cut-off threshold.
-        If the estimator is a GridSearch, it stores the best_params_ in mlflow_params and returns the best_model_ as model. Stopwords must be set via `vectorizer__stop_words`.
-
-        Args:
-            estimator:
-            mlflow_logger:
+        If the estimator is a GridSearch, it stores the best_params_ in mlflow_params
+        and returns the best_model_ as model. **Stopwords must be set via `vectorizer__stop_words`**.
 
         Returns:
-            model:
-            mlflow_params:
-            threshold:
+            model: A trained estimator
         """
         logger.info(f"Get X, y")
         X_train, y_train = self.data.get_X_y(split="train")
@@ -224,6 +226,8 @@ class Modeling:
     def evaluate(self, splits=["train", "val"]):
         """Calculate predictions and metrics.
 
+        Args:
+            splits: List of splits to evaluate. Default: ["train", "val"]
         """
         if self.model:
             for split in splits:
