@@ -120,9 +120,9 @@ def evaluate_model(train_val_test, estimator, params_base, params_best, label,):
 def get_train_val_test(label):
     logger.info(f"Data-loading for label: {label}.")
     try:
-        df_train = pd.read_csv(f'./data/{label}_train.csv', sep='\t')
-        df_test = pd.read_csv(f'./data/{label}_test.csv', sep='\t')
-        df_val = pd.read_csv(f'./data/{label}_val.csv', sep='\t')
+        df_train = pd.read_csv(f'./cache/{label}_train.csv', sep='\t')
+        df_test = pd.read_csv(f'./cache/{label}_test.csv', sep='\t')
+        df_val = pd.read_csv(f'./cache/{label}_val.csv', sep='\t')
     except:
         df_train = loading.load_extended_posts(split='train', label=label)
         df_test = loading.load_extended_posts(split='test', label=label)
@@ -136,9 +136,9 @@ def get_train_val_test(label):
         df_test = df_test[['text', l]]
         df_val = df_val[['text', l]]
 
-        df_train.to_csv(f'./data/{label}_train.csv', sep='\t')
-        df_test.to_csv(f'./data/{label}_test.csv', sep='\t')
-        df_val.to_csv(f'./data/{label}_val.csv', sep='\t')
+        df_train.to_csv(f'./cache/{label}_train.csv', sep='\t')
+        df_test.to_csv(f'./cache/{label}_test.csv', sep='\t')
+        df_val.to_csv(f'./cache/{label}_val.csv', sep='\t')
     data_dict={
         'X_train': df_train.text,
         'X_val': df_val.text,
