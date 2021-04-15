@@ -11,7 +11,7 @@ from spacy_iwnlp import spaCyIWNLP
 nlp=spacy.load('de')
 iwnlp=spaCyIWNLP(lemmatizer_path='data/IWNLP.Lemmatizer_20181001.json')
 nlp.add_pipe(iwnlp)
-
+stemmer = SnowballStemmer('german')
 
 def strip_punct(series):
     '''Strip puncation of series of strings
@@ -50,7 +50,7 @@ def lem_germ(x):
             lemmed+=" " + word._.iwnlp_lemmas[0]
         except:
             lemmed+=" " + str(word)
-    return word
+    return lemmed
 
 def lem_stem(series, lem_stem):
     '''stemms or lemmatizes (or both) a series of german texts.
