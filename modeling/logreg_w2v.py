@@ -11,8 +11,10 @@ import numpy as np
 import re
 from datetime import datetime
 import logging
+import string
 import ast
 from tqdm import tqdm
+import pickle
 
 # NLP imports
 #from nltk.tokenize import word_tokenize
@@ -27,12 +29,14 @@ from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, PredefinedSplit
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import f1_score, recall_score, precision_score
 
 # project utils
-from utils import loading, feature_engineering
+from utils import loading, feature_engineering, scoring
 
 # mlflow
 import mlflow
@@ -79,8 +83,8 @@ def evaluate_model(train_val_test, estimator, params_base, params_best, label,):
     y_val = train_val_test['y_val']
 
     # setting the MLFlow connection and experiment
-    mlflow.set_tracking_uri(TRACKING_URI)
-    mlflow.set_experiment(EXPERIMENT_NAME)
+    #mlflow.set_tracking_uri(TRACKING_URI)
+    #mlflow.set_experiment(EXPERIMENT_NAME)
     with mlflow.start_run():
         run = mlflow.active_run()
         logger.info("Active run_id: {}".format(run.info.run_id))
@@ -102,6 +106,7 @@ def evaluate_model(train_val_test, estimator, params_base, params_best, label,):
         logger.info(f"val - F1 {f1_score(y_val, y_val_pred)}")
         #mlflow.log_metric("val - " + "recall", recall_score(y_val, y_val_pred))
         #mlflow.log_metric("val - " + "precision", precision_score(y_val, y_val_pred))
+        #scoring.log_cm(y_train, y_train_pred, y_val, y_val_pred)
 
         #mlflow.log_metric("test - " + "F1", f1_score(y_test, y_test_pred))
         #mlflow.log_metric("test - " + "recall", recall_score(y_test, y_test_pred))
@@ -124,19 +129,19 @@ def evaluate_model(train_val_test, estimator, params_base, params_best, label,):
 def get_train_val_test(label):
     logger.info("Loading data...")
     try:
-        df_train = pd.read_csv(f'./data/{label}_train.csv', sep='\t')
-        df_test = pd.read_csv(f'./data/{label}_test.csv', sep='\t')
-        df_val = pd.read_csv(f'./data/{label}_val.csv', sep='\t')
-    except:
+        df_train = pd.read_csv(f'./cache/{label}_train.csv', sep='\t')
+        df_test = pd.read_csv(f'./cache/{label}_test.csv', sep='\t')
+        df_val = pd.read_csv(f'./cache/{label}_val.csv', sep='\t')
+    except FileNotFoundError:
         df_train = loading.load_extended_posts(split='train', label=label)
         df_test = loading.load_extended_posts(split='test', label=label)
         df_val = loading.load_extended_posts(split='val', label=label)
         df_train = feature_engineering.add_column_text(df_train)
         df_test = feature_engineering.add_column_text(df_test)
         df_val = feature_engineering.add_column_text(df_val)
-        df_train.to_csv(f'./data/{label}_train.csv', sep='\t')
-        df_test.to_csv(f'./data/{label}_test.csv', sep='\t')
-        df_val.to_csv(f'./data/{label}_val.csv', sep='\t')
+        df_train.to_csv(f'./cache/{label}_train.csv', sep='\t')
+        df_test.to_csv(f'./cache/{label}_test.csv', sep='\t')
+        df_val.to_csv(f'./cache/{label}_val.csv', sep='\t')
     data_dict={
         'X_train': df_train.text,
         'X_val': df_val.text,
@@ -161,86 +166,76 @@ TARGET_LABELS = [
         'label_argumentsused', 
         ]
 
-SCORES_BOW = {
-        'label_sentimentnegative':{'f1':0.5307},
-        'label_sentimentpositive':{'f1':0.0822},
-        'label_offtopic':{'f1':0.2553}, 
-        'label_inappropriate':{'f1':0.1328}, 
-        'label_discriminating':{'f1':0.1321}, 
-        'label_possiblyfeedback':{'f1':0.6156}, 
-        'label_personalstories':{'f1':0.6407}, 
-        'label_argumentsused':{'f1':0.5625},
-        }
-
-SCORES_2017 = {
-        'BOW': SCORES_BOW,
-        }
-
-def train_pseudo(model, label):
-    mlflow.set_tracking_uri(TRACKING_URI)
-    mlflow.set_experiment(EXPERIMENT_NAME)
-    with mlflow.start_run():
-        #mlflow.log_metric("train - " + "F1", )
-        #mlflow.log_metric("train - " + "recall", recall_score(y_train, y_train_pred))
-        #mlflow.log_metric("train - " + "precision", precision_score(y_train, y_train_pred))
-        mlflow.log_metric("val - " + "F1", SCORES_2017[model][label]['f1'] )
-        #mlflow.log_metric("val - " + "recall", recall_score(y_val, y_val_pred))
-        #mlflow.log_metric("val - " + "precision", precision_score(y_val, y_val_pred))
-        #mlflow.log_metric("test - " + "F1", f1_score(y_test, y_test_pred))
-        #mlflow.log_metric("test - " + "recall", recall_score(y_test, y_test_pred))
-        #mlflow.log_metric("test - " + "precision", precision_score(y_test, y_test_pred))
-
-        mlflow_params = dict()
-        mlflow_params['label'] = label
-        mlflow_params['model'] = model
-        mlflow_params["normalization"] = ''
-        mlflow_params["vectorizer"] = ''
-        mlflow_params['grid_search_params'] = ''
-        mlflow_params["best_params"] = ''
-        mlflow.log_params(mlflow_params)
-
-def load_embedding_model(file):
+def load_embedding_vectors(file, embedding_style):
     """
-    :param file: embeddings_path: path of file.
-    :return: dictionary
+    Args: 
+      file: strPath of the embeddingFile.
+      embedding_style: {'word2vec', 'glove'}, default=None
+    Returns: 
+      embedding_dict: dict whose keys are words and the values are the related vectors.
     """
-
-    with open(file, 'r') as f:
-        model = {}
-        for i, line in tqdm(enumerate(f)):
-            split_line = line.split()
-            word = ast.literal_eval(split_line[0]).decode('utf-8')
-            embedding = np.array([float(val) for val in split_line[1:]])
-            model[word] = embedding
-            #if i == 10000: break
-    return model
-
-#start=time.time()
-w2v_dict = load_embedding_model('./embeddings/w2v_vectors.txt')
-#end=time.time()
-#print(end-start)
-
+    if embedding_style not in ('word2vec', 'glove'):
+       raise ValueError("embedding_style must be any of {'word2vec', 'glove'}") 
+    path = f'./cache/embedding_{embedding_style}.pickle'
+    try:
+        with open(path, 'rb') as f_pickle:
+            embedding_dict = pickle.load(f_pickle) 
+        logger.info(f"Loaded existing embedding pickle from: {path}.")
+    except FileNotFoundError:
+        embedding_dict = dict()
+        with open(file, 'r') as f:
+            for i, line in tqdm(enumerate(f)):
+                split_line = line.split()
+                if embedding_style == 'word2vec':
+                    word = ast.literal_eval(split_line[0]).decode('utf-8')
+                elif embedding_style == 'glove':
+                    word = split_line[0]
+                embedding = np.array([float(val) for val in split_line[1:]])
+                embedding_dict[word] = embedding
+            if embedding_style == 'glove':
+                embedding_dict['UNK'] = embedding_dict['<unk>']
+                del embedding_dict['<unk>']
+        with open(path, 'wb') as f_pickle:
+            pickle.dump(embedding_dict, file=f_pickle)
+        logger.info(f"Computed embedding dictionary and dumped it as pickle: {path}.")
+    return embedding_dict
 class MeanEmbeddingVectorizer(object):
     def __init__(self, word2vec):
         self.word2vec = word2vec
 
     def fit(self, X, y):
         return self
-
+    
     def _preprocess(self, sentence):
-        #sentence = re.sub(r"[^a-zA-Z0-9]", " ", sentence)
-        s = sentence.lower().split()
+        #**TODO**: Filter-out complete internet-URLs before removing punctuation. 
+        # Otherwise the characters and numbers of the URL remain. 
+        # However they would all be assigned the "unknown" keyword in transform()
+        s = sentence.lower().translate ({ord(c): " " for c in string.punctuation}).split()
+        if s==[]: 
+            s=['UNK']
         return s
-
+        
     def transform(self, X):
-        transormed = np.matrix([
+        """
+        Args: 
+          X: iterable 
+            1-dim object containing sentences where the sentence is represented as one string.
+        Returns: 
+          transformed: np.matrix
+            A numpy matrix of the dimension (number of samples, common size of the word vectors)
+        """
+        transformed = np.matrix([
             np.mean([self.word2vec[w] if w in self.word2vec else self.word2vec['UNK'] for w in self._preprocess(sentence)], axis=0)
             for sentence in X
         ])
-        import pdb; pdb.set_trace()
-        return transormed
+        return transformed
 
 if __name__ == '__main__':
+    #start=time.time()
+    #w2v_dict = load_embedding_vectors('./embeddings/w2v_vectors_orig.txt', embedding_style='word2vec')
+    w2v_dict = load_embedding_vectors('./embeddings/glove_vectors_orig.txt', embedding_style='glove')
+    #end=time.time()flavoremb_style
+    #print(end-start)
     vectorizer = CountVectorizer()
     model = SVC()
     pipeline = Pipeline([
@@ -262,7 +257,7 @@ if __name__ == '__main__':
         }
     #grid_search = GridSearchCV(pipeline, param_grid=grid_search_params, cv=5, scoring='f1',
     #                    verbose=3, n_jobs=-1)
-    for l in ['label_sentimentnegative']:#TARGET_LABELS:
+    for l in ['label_argumentsused']:#TARGET_LABELS:
         print('-'*50)
         train_val_test = get_train_val_test(l)
         #train_pseudo('BOW', l,)
