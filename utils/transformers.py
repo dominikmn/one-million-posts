@@ -1,0 +1,87 @@
+import string
+import numpy as np
+
+import ast
+import tqdm
+import pickle
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s: %(message)s")
+logging.getLogger("pyhive").setLevel(logging.CRITICAL)  # avoid excessive logs
+logger.setLevel(logging.INFO)
+
+def load_embedding_vectors(file, embedding_style):
+    """
+    Args: 
+      file: strPath of the embeddingFile.
+      embedding_style: {'word2vec', 'glove'}, default=None
+    Returns: 
+      embedding_dict: dict whose keys are words and the values are the related vectors.
+    """
+    if embedding_style not in ('word2vec', 'glove'):
+       raise ValueError("embedding_style must be any of {'word2vec', 'glove'}") 
+    path = f'./cache/embedding_{embedding_style}.pickle'
+    try:
+        with open(path, 'rb') as f_pickle:
+            logger.info(f"Loading existing embedding-pickle from {path} ...")
+            embedding_dict = pickle.load(f_pickle) 
+    except FileNotFoundError:
+        embedding_dict = dict()
+        with open(file, 'r') as f:
+            for line in tqdm.tqdm(f.readlines()):
+                split_line = line.split()
+                if embedding_style == 'word2vec':
+                    word = ast.literal_eval(split_line[0]).decode('utf-8')
+                elif embedding_style == 'glove':
+                    word = split_line[0]
+                embedding = np.array([float(val) for val in split_line[1:]])
+                embedding_dict[word] = embedding
+            if embedding_style == 'glove':
+                embedding_dict['UNK'] = embedding_dict['<unk>']
+                del embedding_dict['<unk>']
+        logger.info(f"Computed embedding dictionary.")
+        logger.info(f"Dumped embedding dictionary as pickle {path} ...")
+        with open(path, 'wb') as f_pickle:
+            pickle.dump(embedding_dict, file=f_pickle)
+    return embedding_dict
+
+class MeanEmbeddingVectorizer(object):
+    r"""
+    Convert a collection of documents to a matrix of mean word vector values.
+
+    Parameters
+    --------------
+    embedding_dict : dict
+        A dictionary that maps words to their corresponding vector in the embedding space.
+    preprocessor : callable, default=None
+        Add an additional preprocessor before str.lower() and str.translate() are applied.
+    """
+    def __init__(self, embedding_dict, preprocessor=None):
+        self.embedding_dict = embedding_dict
+        self.preprocessor = preprocessor
+
+    def fit(self, X, y):
+        return self
+    
+    def _preprocess(self, sentence):
+        if self.preprocessor is not None:
+            sentence = self.preprocessor(sentence)
+        s = sentence.lower().translate({ord(c): " " for c in string.punctuation}).split()
+        if s==[]: 
+            s=['UNK']
+        return s
+        
+    def transform(self, X):
+        """
+        Args: 
+          X: iterable 
+            1-dim object containing sentences where the sentence is represented as one string.
+        Returns: 
+          transformed: np.matrix
+            A numpy matrix of the dimension (number of samples, common size of the word vectors)
+        """
+        transformed = np.matrix([
+            np.mean([self.embedding_dict[w] if w in self.embedding_dict else self.embedding_dict['UNK'] for w in self._preprocess(sentence)], axis=0)
+            for sentence in X
+        ])
+        return transformed
