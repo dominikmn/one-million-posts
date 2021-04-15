@@ -10,7 +10,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 
-from modeling import modeling
+from utils import modeling
 
 import mlflow
 
@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     data = modeling.Posts()
     mlflow_logger = modeling.MLFlowLogger(is_dev=IS_DEVELOPMENT, params=mlflow_params, tags=mlflow_tags)
-    training = modeling.Training(data, pipeline, mlflow_logger)
+    training = modeling.Modeling(data, pipeline, mlflow_logger)
     for label in TARGET_LABELS[:1]:
         with mlflow.start_run() as run:
             data.set_label(label)

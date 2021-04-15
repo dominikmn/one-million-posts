@@ -148,7 +148,7 @@ class MLFlowLogger:
             save_model(sk_model=self.model, path=path)
 
 
-class Training:
+class Modeling:
     """
     Args:
         data:
