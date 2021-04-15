@@ -1,7 +1,9 @@
 #!/bin/sh
 
+source .venv/bin/activate
+
 python -m spacy download de
-wget -O ./data/lemma.zip http://lager.cs.uni-duesseldorf.de/NLP/IWNLP/IWNLP.Lemmatizer_20181001.zip
+curl http://lager.cs.uni-duesseldorf.de/NLP/IWNLP/IWNLP.Lemmatizer_20181001.zip -o ./data/lemma.zip
 
 cd data
 unzip lemma
