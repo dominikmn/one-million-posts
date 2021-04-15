@@ -34,18 +34,17 @@ if __name__ == "__main__":
         "vectorizer__min_df": np.linspace(0, 0.1, 3),
         "vectorizer__max_df": np.linspace(0.9, 1.0, 3),
     }
+    # For clear logging output use verbose=1
     gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=3, verbose=1)
 
     # MLFlow params have limited characters, therefore stopwords must not be given as list
     grid_search_params = param_grid.copy()
     grid_search_params["vectorizer__stop_words"] = ["NLTK-German", None]
 
-    model = {"name": "NaiveBayes", "model": gs}
     mlflow_params = {
         "vectorizer": "count",
         "normalization": "lower",
-        "stopwords": "nltk-german",
-        "model": model["name"],
+        "model": "NaiveBayes",
         "grid_search_params": grid_search_params,
     }
     mlflow_tags = {
@@ -67,7 +66,7 @@ if __name__ == "__main__":
         tags=mlflow_tags
     )
     training = m.Modeling(data, pipeline, mlflow_logger)
-    for label in TARGET_LABELS[:1]:
+    for label in TARGET_LABELS:
         logger.info(f"-"*20)
         logger.info(f"Target: {label}")
         data.set_label(label)
