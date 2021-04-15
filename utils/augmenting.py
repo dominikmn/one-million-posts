@@ -1,15 +1,22 @@
 import pandas as pd
 
-def num_samp(pos, ges, perc):
-    return int((pos - perc*ges)/(perc-1))
 
-def get_aug_os(df, label, perc):
+def get_augmented_df(df, label, perc):
+    '''get a dataset with augmented texts for the minority positive label
+    Arguments: df - pandas dataframe containing the training data that needs to be augmented
+               label - label that needs to be augmented
+               perc - float representing the proportion of positive labels in the augmented dataframe (range [>0.0; <=0.5])
+    Return: an augmented dataframe'''
     
     pos = df[label].value_counts()[1]
     neg = df[label].value_counts()[0]
-    ges = pos+neg
-    df_aug = pd.read_csv(f'./output/trans_{label}.csv')
-    samp_n = num_samp(pos, ges, perc)
+    tot = pos+neg
+    try:
+        df_aug = pd.read_csv(f'./output/trans_{label}.csv')
+    except FileNotFoundError as e:
+        print(f'Requested augmentation data for label {label} not available. Returned original df')
+        return df
+    samp_n = int((pos - perc*tot)/(perc-1))
     if samp_n<0:
         print('Requested percentage is lower than original percentage. Returned original df')
         return df
