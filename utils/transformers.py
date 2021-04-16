@@ -85,7 +85,7 @@ class MeanEmbeddingVectorizer(object):
             A numpy matrix of the dimension (number of samples, common size of the word vectors)
         """
         transformed = np.matrix([
-            np.mean([self.embedding_dict[w] if w in self.embedding_dict else self.embedding_dict['UNK'] for w in self._preprocess(sentence)].split(), axis=0)
+            np.mean([self.embedding_dict[w] if w in self.embedding_dict else self.embedding_dict['UNK'] for w in self._preprocess(sentence).split()], axis=0)
             for sentence in X
         ])
         return transformed
