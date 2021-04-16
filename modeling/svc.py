@@ -8,7 +8,7 @@ stopwords=stopwords.words('german')
 
 # modeling imports
 from sklearn.model_selection import GridSearchCV
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.preprocessing import MinMaxScaler
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         if vec_name in ['count', 'tfidf']:
             pipeline = Pipeline([
                 ("vectorizer", vec),
-                ("clf", RandomForestClassifier(random_state=42)),
+                ("clf", SVC()),
                 ])
             param_grid = {
                 "vectorizer__ngram_range" : [(1,1), (1,2), (1,3)],
@@ -69,19 +69,19 @@ if __name__ == "__main__":
                 "vectorizer__min_df": np.linspace(0, 0.1, 3),
                 "vectorizer__max_df": np.linspace(0.9, 1.0, 3),
                 "vectorizer__preprocessor": [norm, stem, lem],
-                'clf__max_depth': [1, 5, 10],
-                'clf__min_samples_leaf': [5, 10, 40],
+                "clf__C": [.5**0, .5**1, .5**2, .5**3, .5**4, .5**5],
+                "clf__kernel": ['linear', 'rbf'],
             }
             
         else:
             pipeline = Pipeline([
                 ("vectorizer", vec),
-                ("clf",  RandomForestClassifier(random_state=42)),
+                ("clf", SVC()),
                 ])
 
             param_grid = {
-                'clf__max_depth': [1, 5, 10],
-                'clf__min_samples_leaf': [5, 10, 40],
+                "clf__C": [.5**0, .5**1, .5**2, .5**3, .5**4, .5**5],
+                "clf__kernel": ['linear', 'rbf'],
             }
         # For clear logging output use verbose=1
         gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=5, verbose=1)
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         mlflow_params = {
             "vectorizer": vec_name,
             "normalization": "lower",
-            "model": "RandomForest",
+            "model": "SVM",
             "grid_search_params": str(grid_search_params)[:249],
         }
         mlflow_tags = {
