@@ -84,13 +84,12 @@ class Posts:
             df = self.df.copy()
         if label:
             self.current_label = label
+        try:
             df = df.dropna(subset=[self.current_label])
-        elif self.current_label:
-            df = df.dropna(subset=[self.current_label])
-        else:
+        except KeyError as e:
             message = f"Please set a label (Post.set_label). Available labels: {self.AVAILABLE_LABELS}"
             logger.error(message)
-            raise ValueError(message)
+            raise KeyError(e)
         return df.text, df[self.current_label]
     
     def set_label(self, label:str):
