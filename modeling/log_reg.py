@@ -8,7 +8,7 @@ stopwords=stopwords.words('german')
 
 # modeling imports
 from sklearn.model_selection import GridSearchCV
-import lightgbm as lgb
+from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.preprocessing import MinMaxScaler
