@@ -70,6 +70,10 @@ def lem_stem(series, lem_stem):
     return new_series
 
 def normalize(txt, url_emoji_dummy=False):
+    """
+
+
+    """
     txt = txt.lower()
 
     url_dummy = ' '
@@ -107,7 +111,8 @@ def normalize(txt, url_emoji_dummy=False):
     s += r")"                    # end "backward" emoticons
     # "Eastern" emoticons like ^^ and o_O
     s += r"|"                    # or
-    s += r"(?:\^\^)|(?:o_O)"     # only two eastern emoticons for now
+    s += r"(?:\^\^)|"            # 'eastern' emoji
+    s += r"(?:[<(]?o_o[)>]?)"    # 'eastern' emoji. Has to be lower-case 'o' because of the preceeding .lower() further above
     s += r")"                    # end emoticon
     s += r"(?=\s|$)"             # white space or end required after
     emoticon_re = re.compile(s)
