@@ -12,6 +12,7 @@ logger.setLevel(logging.INFO)
 
 def load_embedding_vectors(file, embedding_style):
     """
+    Helper function in order to load word2vec or glove vector embedding files provided on https://deepset.ai/german-word-embeddings.
     Args: 
       file: strPath of the embeddingFile.
       embedding_style: {'word2vec', 'glove'}, default=None
@@ -20,10 +21,10 @@ def load_embedding_vectors(file, embedding_style):
     """
     if embedding_style not in ('word2vec', 'glove'):
        raise ValueError("embedding_style must be any of {'word2vec', 'glove'}") 
-    path = f'./cache/embedding_{embedding_style}.pickle'
+    file_cached = f'./cache/embedding_{embedding_style}.pickle'
     try:
-        with open(path, 'rb') as f_pickle:
-            logger.info(f"Loading existing embedding-pickle from {path} ...")
+        with open(file_cached, 'rb') as f_pickle:
+            logger.info(f"Loading existing embedding-pickle from {file_cached} ...")
             embedding_dict = pickle.load(f_pickle) 
     except FileNotFoundError:
         embedding_dict = dict()
@@ -40,8 +41,8 @@ def load_embedding_vectors(file, embedding_style):
                 embedding_dict['UNK'] = embedding_dict['<unk>']
                 del embedding_dict['<unk>']
         logger.info(f"Computed embedding dictionary.")
-        logger.info(f"Dumped embedding dictionary as pickle {path} ...")
-        with open(path, 'wb') as f_pickle:
+        logger.info(f"Dumped embedding dictionary as pickle {file_cached} ...")
+        with open(file_cached, 'wb') as f_pickle:
             pickle.dump(embedding_dict, file=f_pickle)
     return embedding_dict
 
@@ -49,11 +50,10 @@ class MeanEmbeddingVectorizer(object):
     r"""
     Convert a collection of documents to a matrix of mean word vector values.
 
-    Parameters
-    --------------
-    embedding_dict : dict
+    Args:
+      embedding_dict : dict
         A dictionary that maps words to their corresponding vector in the embedding space.
-    preprocessor : callable, default=None
+      preprocessor : callable, default=None
         Add an additional preprocessor before str.lower() and str.translate() are applied.
     """
     def __init__(self, embedding_dict, preprocessor=None):
