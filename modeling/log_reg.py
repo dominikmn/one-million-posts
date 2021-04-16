@@ -69,7 +69,7 @@ if __name__ == "__main__":
                 "vectorizer__min_df": np.linspace(0, 0.1, 3),
                 "vectorizer__max_df": np.linspace(0.9, 1.0, 3),
                 "vectorizer__preprocessor": [norm, stem, lem],
-                "cfl__C" : [0.01, 0.1, 1, 10, 100]
+                "clf__C" : [0.01, 0.1, 1, 10, 100]
             }
             
         else:
@@ -79,7 +79,7 @@ if __name__ == "__main__":
                 ])
 
             param_grid = {
-                "cfl__C" : [0.01, 0.1, 1, 10, 100]
+                "clf__C" : [0.01, 0.1, 1, 10, 100]
             }
         # For clear logging output use verbose=1
         gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=5, verbose=1)
