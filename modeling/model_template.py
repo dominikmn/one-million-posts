@@ -66,12 +66,14 @@ if __name__ == "__main__":
         tags=mlflow_tags
     )
     training = m.Modeling(data, pipeline, mlflow_logger)
-    for label in TARGET_LABELS:
+    for label in TARGET_LABELS[:1]:
         logger.info(f"-"*20)
         logger.info(f"Target: {label}")
-        data.set_label(label)
+        data.set_label(label=label)
+        data.set_balance_method(balance_method=None, sampling_strategy=None)
         training.train()
         training.evaluate(["train", "val"])
-        with mlflow.start_run() as run:
+        if True:
+        #with mlflow.start_run() as run:
             mlflow_logger.log()
     

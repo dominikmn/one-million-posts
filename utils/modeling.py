@@ -9,7 +9,7 @@ from sklearn.metrics import f1_score, recall_score, precision_score, confusion_m
 from sklearn.model_selection import GridSearchCV
 
 # one-million-post utils
-from utils import loading, feature_engineering
+from utils import loading, feature_engineering, augmenting
 
 # mlflow
 import mlflow
@@ -65,14 +65,22 @@ class Posts:
         df = loading.load_extended_posts()
         self.df = feature_engineering.add_column_text(df)
         self.current_label = None
+        self.balance_method = None
+        self.sampling_strategy = None
     
-    def get_X_y(self, split:str=None, label:str=None):
+    def get_X_y(self, split:str=None, label:str=None, balance_method:str=None, sampling_strategy:float=None) -> Tuple[pd.Series, pd.Series]:
         """Get the features and target variable.
-        
+
+        label, balance_method, and sampling_strategy overwrite the attributes of Post if given.
+
         Args:
-            label: The label to use as target. Default is all available labels
-            split: The data-split to use. One of ['train', 'val', 'test']
-        
+            split: The data-split to use. One of [None, 'train', 'val', 'test']. If None, the whole
+                dataset is returned
+            label: The label to use as target.
+            balance_method: The balancing method. One of ['translate', 'oversample']
+            sampling_strategy: The desired ratio of the number of samples in the minority class
+                over the number of samples in the majority class after resampling/augmenting.
+
         Returns:
             X: The feature (text column) of the posts
             y: The target annotations
@@ -82,6 +90,7 @@ class Posts:
             df = self.df.merge(filter_frame, how='inner', on='id_post')
         else:
             df = self.df.copy()
+
         if label:
             self.current_label = label
         try:
@@ -90,8 +99,18 @@ class Posts:
             message = f"Please set a label (Post.set_label). Available labels: {self.AVAILABLE_LABELS}"
             logger.error(message)
             raise KeyError(e)
-        return df.text, df[self.current_label]
-    
+
+        X = df.text
+        y = df[self.current_label]
+
+        if balance_method:
+            self.balance_method = balance_method
+        if self.balance_method is "translate":
+            X, y = augmenting.get_augmented_X_y(X, y, label=self.label, sampling_strategy=sampling_strategy)
+        elif self.balance_method is "oversample":
+            X, y = augmenting.get_oversampled_X_y(X, y, sampling_strategy=sampling_strategy)
+        return X, y
+
     def set_label(self, label:str):
         if label in self.AVAILABLE_LABELS:
             self.current_label = label
@@ -99,6 +118,10 @@ class Posts:
             message = f"Please choose one of the available labels {self.AVAILABLE_LABELS}"
             logger.error(message)
             raise ValueError(message)
+
+    def set_balance_method(self, balance_method, sampling_strategy):
+        self.balance_method = balance_method
+        self.sampling_strategy = sampling_strategy
 
 
 class MLFlowLogger:
@@ -194,6 +217,9 @@ class Modeling:
         logger.info(f"Get X, y")
         X_train, y_train = self.data.get_X_y(split="train")
         self.mlflow_logger.add_param("label", self.data.current_label)
+        self.mlflow_logger.add_param("balance_method", self.data.balance_method)
+        if self.data.balance_method:
+            self.mlflow_logger.add_param("sampling_strategy", self.data.sampling_strategy)
         
         logger.info(f"Fit model")
         self.estimator.fit(X_train, y_train) #ToDo save to mlflow logger
