@@ -57,6 +57,16 @@ def predict_with_threshold(y_pred_proba: np.array, threshold: float) -> np.array
 
 
 class Posts:
+    """Handles the data.
+
+    Attributes:
+        split: The data-split to use. One of [None, 'train', 'val', 'test']. If None, the whole
+            dataset is returned
+        current_label: The label to use as target.
+        balance_method: The balancing method. One of [None, 'translate', 'oversample']
+        sampling_strategy: The desired ratio of the number of samples in the minority class
+            over the number of samples in the majority class after resampling/augmenting.
+    """
     AVAILABLE_LABELS = ['label_argumentsused', 'label_discriminating', 'label_inappropriate',
                 'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
                 'label_sentimentnegative', 'label_sentimentpositive',]
@@ -66,8 +76,8 @@ class Posts:
         self.df = feature_engineering.add_column_text(df)
         self.current_label = None
         self.balance_method = None
-        self.sampling_strategy = None
-    
+        self.sampling_strategy = 1
+
     def get_X_y(self, split:str=None, label:str=None, balance_method:str=None, sampling_strategy:float=None) -> Tuple[pd.Series, pd.Series]:
         """Get the features and target variable.
 
@@ -105,10 +115,12 @@ class Posts:
 
         if balance_method:
             self.balance_method = balance_method
+        if sampling_strategy:
+            self.sampling_strategy = sampling_strategy
         if self.balance_method is "translate":
-            X, y = augmenting.get_augmented_X_y(X, y, label=self.label, sampling_strategy=sampling_strategy)
+            X, y = augmenting.get_augmented_X_y(X, y, label=self.current_label, sampling_strategy=self.sampling_strategy)
         elif self.balance_method is "oversample":
-            X, y = augmenting.get_oversampled_X_y(X, y, sampling_strategy=sampling_strategy)
+            X, y = augmenting.get_oversampled_X_y(X, y, sampling_strategy=self.sampling_strategy)
         return X, y
 
     def set_label(self, label:str):
@@ -235,7 +247,8 @@ class Modeling:
             best_params = self.estimator.best_params_
             if 'vectorizer__stop_words' in best_params.keys() and best_params['vectorizer__stop_words']!=None:
                 best_params['vectorizer__stop_words'] = "NLTK-German"
-            self.mlflow_logger.add_param("best_params", best_params)
+            for k, v in best_params.items():
+                self.mlflow_logger.add_param(f"best_{k}", v)
 
         self.model = self.estimator
         return self.model

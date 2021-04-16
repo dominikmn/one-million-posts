@@ -45,7 +45,7 @@ if __name__ == "__main__":
         "vectorizer": "count",
         "normalization": "lower",
         "model": "NaiveBayes",
-        "grid_search_params": grid_search_params,
+        "grid_search_params": str(grid_search_params)[:249],
     }
     mlflow_tags = {
         "cycle2": True,
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
         'label_sentimentnegative', 'label_sentimentpositive',]
     
-    IS_DEVELOPMENT = True
+    IS_DEVELOPMENT = False
 
     data = m.Posts()
     mlflow_logger = m.MLFlowLogger(
@@ -73,7 +73,7 @@ if __name__ == "__main__":
         data.set_balance_method(balance_method=None, sampling_strategy=None)
         training.train()
         training.evaluate(["train", "val"])
-        if True:
-        #with mlflow.start_run() as run:
+        #if True:
+        with mlflow.start_run() as run:
             mlflow_logger.log()
     
