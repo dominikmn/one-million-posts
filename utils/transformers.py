@@ -10,12 +10,12 @@ logging.basicConfig(format="%(asctime)s: %(message)s")
 logging.getLogger("pyhive").setLevel(logging.CRITICAL)  # avoid excessive logs
 logger.setLevel(logging.INFO)
 
-def load_embedding_vectors(file, embedding_style):
+def load_embedding_vectors(embedding_style, file=None):
     """
     Helper function in order to load word2vec or glove vector embedding files provided on https://deepset.ai/german-word-embeddings.
     Args: 
-      file: strPath of the embeddingFile.
       embedding_style: {'word2vec', 'glove'}, default=None
+      file: str Path of the embeddingFile. default is None.
     Returns: 
       embedding_dict: dict whose keys are words and the values are the related vectors.
     """
