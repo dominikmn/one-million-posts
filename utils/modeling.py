@@ -117,9 +117,9 @@ class Posts:
             self.balance_method = balance_method
         if sampling_strategy:
             self.sampling_strategy = sampling_strategy
-        if self.balance_method is "translate":
+        if self.balance_method == "translate":
             X, y = augmenting.get_augmented_X_y(X, y, label=self.current_label, sampling_strategy=self.sampling_strategy)
-        elif self.balance_method is "oversample":
+        elif self.balance_method == "oversample":
             X, y = augmenting.get_oversampled_X_y(X, y, sampling_strategy=self.sampling_strategy)
         return X, y
 
