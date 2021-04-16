@@ -4,6 +4,9 @@ import numpy as np
 import ast
 import tqdm
 import pickle
+
+from utils import cleaning
+
 import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(asctime)s: %(message)s")
@@ -66,9 +69,10 @@ class MeanEmbeddingVectorizer(object):
     def _preprocess(self, sentence):
         if self.preprocessor is not None:
             sentence = self.preprocessor(sentence)
-        s = sentence.lower().translate({ord(c): " " for c in string.punctuation}).split()
-        if s==[]: 
-            s=['UNK']
+        else:
+            s = cleaning.normalize(sentence)
+        if not s: 
+            s='UNK'
         return s
         
     def transform(self, X):
@@ -81,7 +85,7 @@ class MeanEmbeddingVectorizer(object):
             A numpy matrix of the dimension (number of samples, common size of the word vectors)
         """
         transformed = np.matrix([
-            np.mean([self.embedding_dict[w] if w in self.embedding_dict else self.embedding_dict['UNK'] for w in self._preprocess(sentence)], axis=0)
+            np.mean([self.embedding_dict[w] if w in self.embedding_dict else self.embedding_dict['UNK'] for w in self._preprocess(sentence).split()], axis=0)
             for sentence in X
         ])
         return transformed
