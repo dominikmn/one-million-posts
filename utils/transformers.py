@@ -16,9 +16,10 @@ logger.setLevel(logging.INFO)
 def load_embedding_vectors(embedding_style, file=None):
     """
     Helper function in order to load word2vec or glove vector embedding files provided on https://deepset.ai/german-word-embeddings.
+
     Args: 
       embedding_style: {'word2vec', 'glove'}, default=None
-      file: str Path of the embeddingFile. default is None.
+      file: An embedding vector file containing words and their corresponding embedding vectors.
     Returns: 
       embedding_dict: dict whose keys are words and the values are the related vectors.
     """
@@ -30,6 +31,8 @@ def load_embedding_vectors(embedding_style, file=None):
             logger.info(f"Loading existing embedding-pickle from {file_cached} ...")
             embedding_dict = pickle.load(f_pickle) 
     except FileNotFoundError:
+        if file is None:
+            raise ValueError("Argument file is None. Argument file may not be empty as no pre-computed pickle could be found in ./cache/.") 
         embedding_dict = dict()
         with open(file, 'r') as f:
             for line in tqdm.tqdm(f.readlines()):
@@ -38,7 +41,7 @@ def load_embedding_vectors(embedding_style, file=None):
                     word = ast.literal_eval(split_line[0]).decode('utf-8')
                 elif embedding_style == 'glove':
                     word = split_line[0]
-                embedding = np.array([float(val) for val in split_line[1:]])
+                embedding = np.array([float(val) for val in split_line[1:]], dtype=np.float32)
                 embedding_dict[word] = embedding
             if embedding_style == 'glove':
                 embedding_dict['UNK'] = embedding_dict['<unk>']
