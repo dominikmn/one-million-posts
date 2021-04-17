@@ -68,7 +68,7 @@ if __name__ == "__main__":
                 "vectorizer__stop_words" : [stopwords, None],
                 "vectorizer__min_df": np.linspace(0, 0.1, 3),
                 "vectorizer__max_df": np.linspace(0.9, 1.0, 3),
-                "vectorizer__preprocessor": [norm, stem, lem],
+                "vectorizer__preprocessor": [norm, stem],
                 "clf__C" : [0.01, 0.1, 1, 10, 100]
             }
             
@@ -88,7 +88,7 @@ if __name__ == "__main__":
         grid_search_params = param_grid.copy()
         grid_search_params["vectorizer__stop_words"] = ["NLTK-German", None]
         if vec_name in ['count', 'tfidf']:
-            grid_search_params["vectorizer__preprocessor"] = ["norm", "lem", "stem"]
+            grid_search_params["vectorizer__preprocessor"] = ["norm", "stem"]
 
         mlflow_params = {
             "vectorizer": vec_name,
