@@ -113,14 +113,15 @@ class Posts:
         X = df.text
         y = df[self.current_label]
 
-        if balance_method:
-            self.balance_method = balance_method
-        if sampling_strategy:
-            self.sampling_strategy = sampling_strategy
-        if self.balance_method == "translate":
-            X, y = augmenting.get_augmented_X_y(X, y, label=self.current_label, sampling_strategy=self.sampling_strategy)
-        elif self.balance_method == "oversample":
-            X, y = augmenting.get_oversampled_X_y(X, y, sampling_strategy=self.sampling_strategy)
+        if split == "train":
+            if balance_method:
+                self.balance_method = balance_method
+            if sampling_strategy:
+                self.sampling_strategy = sampling_strategy
+            if self.balance_method == "translate":
+                X, y = augmenting.get_augmented_X_y(X, y, label=self.current_label, sampling_strategy=self.sampling_strategy)
+            elif self.balance_method == "oversample":
+                X, y = augmenting.get_oversampled_X_y(X, y, sampling_strategy=self.sampling_strategy)
         return X, y
 
     def set_label(self, label:str):
