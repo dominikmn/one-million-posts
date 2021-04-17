@@ -44,8 +44,8 @@ if __name__ == "__main__":
     #        transformers.MeanEmbeddingVectorizer(embedding_dict=embedding_dict_glove): 'glove',
     #       transformers.MeanEmbeddingVectorizer(embedding_dict=embedding_dict_w2v): 'word2vec',
     #       }
-    vecs = {CountVectorizer(): 'count',
-           TfidfVectorizer(): 'tfidf',
+    vecs = {'count': CountVectorizer(),
+           'tfidf': TfidfVectorizer(),
            }
     
     lem = cleaning.lem_germ
@@ -55,12 +55,12 @@ if __name__ == "__main__":
     
     
 
-    for vec, vec_name in vecs.items():
+    for vec_name in vecs.keys():
         print(vec_name)
 
         if vec_name in ['count', 'tfidf']:
             pipeline = Pipeline([
-                ("vectorizer", vec),
+                ("vectorizer", vecs[vec_name]),
                 ("clf", LogisticRegression(solver='liblinear')),
                 ])
             param_grid = {
@@ -68,13 +68,13 @@ if __name__ == "__main__":
                 "vectorizer__stop_words" : [stopwords, None],
                 "vectorizer__min_df": np.linspace(0, 0.1, 3),
                 "vectorizer__max_df": np.linspace(0.9, 1.0, 3),
-                "vectorizer__preprocessor": [norm, stem],
+                "vectorizer__preprocessor": [norm],#, stem],
                 "clf__C" : [0.01, 0.1, 1, 10, 100]
             }
             
         else:
             pipeline = Pipeline([
-                ("vectorizer", vec),
+                ("vectorizer", vecs[vec_name]),
                 ("clf", LogisticRegression()),
                 ])
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
                 "clf__C" : [0.01, 0.1, 1, 10, 100]
             }
         # For clear logging output use verbose=1
-        gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=5, verbose=1)
+        gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=5, verbose=1, n_jobs=-1)
 
         # MLFlow params have limited characters, therefore stopwords must not be given as list
         grid_search_params = param_grid.copy()
@@ -126,7 +126,7 @@ if __name__ == "__main__":
                     training.train()
                     training.evaluate(["train", "val"])
                     #if True:
-                    with mlflow.start_run() as run:
+                    with mlflow.start_run(run_name='logreg_without_glove_w2v') as run:
                         mlflow_logger.log()
 
 
