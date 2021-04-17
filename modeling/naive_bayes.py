@@ -33,6 +33,7 @@ logger.setLevel(logging.INFO)
 
 if __name__ == "__main__":
     
+    
     data = m.Posts()
     #embedding_dict_glove = transformers.load_embedding_vectors(embedding_style='glove')
     #embedding_dict_w2v = transformers.load_embedding_vectors(embedding_style='word2vec')
@@ -48,7 +49,7 @@ if __name__ == "__main__":
            TfidfVectorizer(): 'tfidf',
            }
     
-    lem = cleaning.lem_germ
+    #lem = cleaning.lem_germ
     stem = cleaning.stem_germ
     norm = cleaning.normalize
     
@@ -57,7 +58,6 @@ if __name__ == "__main__":
 
     for vec, vec_name in vecs.items():
         print(vec_name)
-
         if vec_name in ['count', 'tfidf']:
             pipeline = Pipeline([
                 ("vectorizer", vec),
@@ -68,7 +68,7 @@ if __name__ == "__main__":
                 "vectorizer__stop_words" : [stopwords, None],
                 "vectorizer__min_df": np.linspace(0, 0.1, 3),
                 "vectorizer__max_df": np.linspace(0.9, 1.0, 3),
-                "vectorizer__preprocessor": [norm, stem, lem],
+                "vectorizer__preprocessor": [norm, stem],
             }
             
         else:
@@ -82,7 +82,7 @@ if __name__ == "__main__":
                 "clf__alpha" : [1.0],
             }
         # For clear logging output use verbose=1
-        gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=5, verbose=1)
+        gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=5, verbose=1, n_jobs=-1)
 
         # MLFlow params have limited characters, therefore stopwords must not be given as list
         grid_search_params = param_grid.copy()
@@ -128,6 +128,6 @@ if __name__ == "__main__":
                     #if True:
                     with mlflow.start_run() as run:
                         mlflow_logger.log()
-                        
+
 
 
