@@ -137,6 +137,7 @@ dmypy.json
 data/
 cache/
 papers/
+embeddings/
 
 # Jupyter notebooks
 *.ipynb
