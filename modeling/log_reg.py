@@ -34,99 +34,100 @@ logger.setLevel(logging.INFO)
 if __name__ == "__main__":
     
     data = m.Posts()
-    #embedding_dict_glove = transformers.load_embedding_vectors(embedding_style='glove')
-    #embedding_dict_w2v = transformers.load_embedding_vectors(embedding_style='word2vec')
 
     trans_os = {None: [None], 'translate':[0.8,0.9,1.0], 'oversample':[0.8,0.9,1.0]} 
+
+    TARGET_LABELS = ['label_argumentsused', 'label_discriminating', 'label_inappropriate',
+        'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
+        'label_sentimentnegative', 'label_sentimentpositive',]
+
+    #embedding_dict_glove = transformers.load_embedding_vectors(embedding_style='glove')
+    #embedding_dict_w2v = transformers.load_embedding_vectors(embedding_style='word2vec')
     
-    #vecs = {CountVectorizer(): 'count', 
-    #        TfidfVectorizer(): 'tfidf',
-    #        transformers.MeanEmbeddingVectorizer(embedding_dict=embedding_dict_glove): 'glove',
-    #       transformers.MeanEmbeddingVectorizer(embedding_dict=embedding_dict_w2v): 'word2vec',
-    #       }
-    vecs = {'count': CountVectorizer(),
+    preps = {
+            'norm': lambda x: cleaning.series_apply_chaining(x, [cleaning.normalize]),
+            'stem': lambda x: cleaning.series_apply_chaining(x, [cleaning.normalize, cleaning.stem_germ]), 
+            'lem':  lambda x: cleaning.series_apply_chaining(x, [cleaning.normalize, cleaning.lem_germ]), 
+            'glove': transformers.MeanEmbeddingVectorizer(embedding_dict=embedding_dict_glove).transform,
+            'word2vec': transformers.MeanEmbeddingVectorizer(embedding_dict=embedding_dict_word2vec).transform,
+            }
+    vecs = {
+            'count': CountVectorizer(),
            'tfidf': TfidfVectorizer(),
-           }
-    
-    lem = cleaning.lem_germ
-    stem = cleaning.stem_germ
-    norm = cleaning.normalize
-    
-    
-    
-
-    for vec_name in vecs.keys():
-        print(vec_name)
-
-        if vec_name in ['count', 'tfidf']:
-            pipeline = Pipeline([
-                ("vectorizer", vecs[vec_name]),
-                ("clf", LogisticRegression(solver='liblinear')),
-                ])
-            param_grid = {
-                "vectorizer__ngram_range" : [(1,1), (1,2), (1,3)],
-                "vectorizer__stop_words" : [stopwords, None],
-                "vectorizer__min_df": np.linspace(0, 0.1, 3),
-                "vectorizer__max_df": np.linspace(0.9, 1.0, 3),
-                "vectorizer__preprocessor": [norm],#, stem],
-                "clf__C" : [0.01, 0.1, 1, 10, 100]
             }
-            
-        else:
-            pipeline = Pipeline([
-                ("vectorizer", vecs[vec_name]),
-                ("clf", LogisticRegression()),
-                ])
+    PRE_VEC_COMBINATIONS = [
+                        ['norm', 'count'],
+                        ['stem', 'count'],
+                        ['lem' , 'count'],
+                        ['norm', 'tfidf'],
+                        ['stem', 'tfidf'],
+                        ['lem' , 'tfidf'],
+                        ['glove', 'glove'],
+                        ['word2vec', 'word2vec'],
+                    ]
+    
+    for method, strat in trans_os.items():
+        for strategy in strat:
+            print(method, strategy)
+            for label in TARGET_LABELS:
+                for c in PRE_VEC_COMBINATIONS:
+                    print(c)
+                    constant_preprocessor=preps[c[0]]
+                    if c[1] in ['count', 'tfidf']:
+                        pipeline = Pipeline([
+                            ("vectorizer", vecs[c[1]]),
+                            ("clf", LogisticRegression(solver='liblinear')),
+                            ])
+                        param_grid = {
+                            "vectorizer__ngram_range" : [(1,1), (1,2), (1,3)],
+                            "vectorizer__stop_words" : [stopwords, None],
+                            "vectorizer__min_df": 0,
+                            "vectorizer__max_df": 0.9,
+                            "clf__C" : [0.01, 0.1, 1, 10, 100]
+                        }
+                    else:
+                        pipeline = Pipeline([
+                            ("clf", LogisticRegression(solver='liblinear')),
+                            ])
+                        param_grid = {
+                            "clf__C" : [0.01, 0.1, 1, 10, 100]
+                        }
+                    # For clear logging output use verbose=1
+                    gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=5, verbose=1, n_jobs=-1)
 
-            param_grid = {
-                "clf__C" : [0.01, 0.1, 1, 10, 100]
-            }
-        # For clear logging output use verbose=1
-        gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=5, verbose=1, n_jobs=-1)
+                    # MLFlow params have limited characters, therefore stopwords must not be given as list
+                    grid_search_params = param_grid.copy()
+                    grid_search_params["vectorizer__stop_words"] = ["NLTK-German", None]
+                    mlflow_params = {
+                        "vectorizer": c[1],
+                        "normalization": c[0],
+                        "model": "LogisticRegression",
+                        "grid_search_params": str(grid_search_params)[:249],
+                    }
+                    mlflow_tags = {
+                        "cycle2": True,
+                    }
 
-        # MLFlow params have limited characters, therefore stopwords must not be given as list
-        grid_search_params = param_grid.copy()
-        grid_search_params["vectorizer__stop_words"] = ["NLTK-German", None]
-        if vec_name in ['count', 'tfidf']:
-            grid_search_params["vectorizer__preprocessor"] = ["norm", "stem"]
-
-        mlflow_params = {
-            "vectorizer": vec_name,
-            "normalization": "lower",
-            "model": "LogisticRegression",
-            "grid_search_params": str(grid_search_params)[:249],
-        }
-        mlflow_tags = {
-            "cycle2": True,
-        }
-
-        TARGET_LABELS = ['label_argumentsused', 'label_discriminating', 'label_inappropriate',
-            'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
-            'label_sentimentnegative', 'label_sentimentpositive',]
-
-        IS_DEVELOPMENT = False
+                    IS_DEVELOPMENT = False
 
 
-        mlflow_logger = m.MLFlowLogger(
-            uri=TRACKING_URI,
-            experiment=EXPERIMENT_NAME,
-            is_dev=IS_DEVELOPMENT,
-            params=mlflow_params,
-            tags=mlflow_tags
-        )
-        training = m.Modeling(data, gs, mlflow_logger)
-        for method, strat in trans_os.items():
-            for strategy in strat:
-                print(method, strategy)
-                for label in TARGET_LABELS:
+                    mlflow_logger = m.MLFlowLogger(
+                        uri=TRACKING_URI,
+                        experiment=EXPERIMENT_NAME,
+                        is_dev=IS_DEVELOPMENT,
+                        params=mlflow_params,
+                        tags=mlflow_tags
+                    )
+                    training = m.Modeling(data, gs, mlflow_logger)
+
                     logger.info(f"-"*20)
                     logger.info(f"Target: {label}")
                     data.set_label(label=label)
                     data.set_balance_method(balance_method=method, sampling_strategy=strategy)
-                    training.train()
-                    training.evaluate(["train", "val"])
+                    training.train(constant_preprocessor=constant_preprocessor)
+                    training.evaluate(["train", "val"],constant_preprocessor=constant_preprocessor)
                     #if True:
-                    with mlflow.start_run(run_name='logreg_without_glove_w2v') as run:
+                    with mlflow.start_run(run_name='logreg_with_full_params') as run:
                         mlflow_logger.log()
 
 
