@@ -41,8 +41,8 @@ if __name__ == "__main__":
         'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
         'label_sentimentnegative', 'label_sentimentpositive',]
 
-    #embedding_dict_glove = transformers.load_embedding_vectors(embedding_style='glove')
-    #embedding_dict_w2v = transformers.load_embedding_vectors(embedding_style='word2vec')
+    embedding_dict_glove = transformers.load_embedding_vectors(embedding_style='glove')
+    embedding_dict_word2vec = transformers.load_embedding_vectors(embedding_style='word2vec')
     
     preps = {
             'norm': lambda x: cleaning.series_apply_chaining(x, [cleaning.normalize]),
@@ -56,14 +56,14 @@ if __name__ == "__main__":
            'tfidf': TfidfVectorizer(),
             }
     PRE_VEC_COMBINATIONS = [
+                        ['glove', 'glove'],
+                        ['word2vec', 'word2vec'],
                         ['norm', 'count'],
                         ['stem', 'count'],
                         ['lem' , 'count'],
                         ['norm', 'tfidf'],
                         ['stem', 'tfidf'],
                         ['lem' , 'tfidf'],
-                        ['glove', 'glove'],
-                        ['word2vec', 'word2vec'],
                     ]
     
     for method, strat in trans_os.items():
@@ -71,6 +71,7 @@ if __name__ == "__main__":
             print(method, strategy)
             for label in TARGET_LABELS:
                 for c in PRE_VEC_COMBINATIONS:
+                    mlflow_params=dict()
                     print(c)
                     constant_preprocessor=preps[c[0]]
                     if c[1] in ['count', 'tfidf']:
@@ -81,10 +82,15 @@ if __name__ == "__main__":
                         param_grid = {
                             "vectorizer__ngram_range" : [(1,1), (1,2), (1,3)],
                             "vectorizer__stop_words" : [stopwords, None],
-                            "vectorizer__min_df": 0,
-                            "vectorizer__max_df": 0.9,
+                            "vectorizer__min_df": [0.],
+                            "vectorizer__max_df": [0.9],
                             "clf__C" : [0.01, 0.1, 1, 10, 100]
                         }
+                        grid_search_params = param_grid.copy()
+                        # MLFlow params have limited characters, therefore stopwords must not be given as list
+                        grid_search_params["vectorizer__stop_words"] = ["NLTK-German", None]
+                        mlflow_params["normalization"] = c[0]
+                        mlflow_params["vectorizer"]    = c[1]
                     else:
                         pipeline = Pipeline([
                             ("clf", LogisticRegression(solver='liblinear')),
@@ -92,24 +98,19 @@ if __name__ == "__main__":
                         param_grid = {
                             "clf__C" : [0.01, 0.1, 1, 10, 100]
                         }
-                    # For clear logging output use verbose=1
+                        grid_search_params = param_grid.copy()
+                        mlflow_params["normalization"] = 'norm'
+                        mlflow_params["vectorizer"]    = c[0]
+
                     gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=5, verbose=1, n_jobs=-1)
 
-                    # MLFlow params have limited characters, therefore stopwords must not be given as list
-                    grid_search_params = param_grid.copy()
-                    grid_search_params["vectorizer__stop_words"] = ["NLTK-German", None]
-                    mlflow_params = {
-                        "vectorizer": c[1],
-                        "normalization": c[0],
-                        "model": "LogisticRegression",
-                        "grid_search_params": str(grid_search_params)[:249],
-                    }
+                    mlflow_params["model"]=  "LogisticRegression"
+                    mlflow_params["grid_search_params"]=  str(grid_search_params)[:249]
                     mlflow_tags = {
                         "cycle2": True,
                     }
 
                     IS_DEVELOPMENT = False
-
 
                     mlflow_logger = m.MLFlowLogger(
                         uri=TRACKING_URI,
