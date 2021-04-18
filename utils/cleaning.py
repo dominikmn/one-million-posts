@@ -69,7 +69,7 @@ def lem_stem(series, lem_stem):
         new_series = series.apply(lem_germ).apply(stem_germ)
     return new_series
 
-def series_apply_chaining(series, *functions):
+def series_apply_chaining(series, functions):
     for f in functions:
         series = series.apply(f)
     return series
