@@ -52,8 +52,8 @@ rcParams['figure.figsize'] = 12, 8
 RANDOM_SEED = 42
 np.random.seed(RANDOM_SEED)
 torch.manual_seed(RANDOM_SEED)
-#device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-device = torch.device('cpu')
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+#device = torch.device('cpu')
 
 # %%
 print(device)
@@ -62,14 +62,26 @@ print(device)
 # ## Data loading
 
 # %%
-from utils import loading, feature_engineering
+from utils import loading, feature_engineering, augmenting
 
 # %%
-df_train = loading.load_extended_posts(split='train', label='label_sentimentnegative')
+LABEL = 'label_sentimentnegative'
+
+# %%
+df_train = loading.load_extended_posts(split='train', label=LABEL)
 df_train = feature_engineering.add_column_text(df_train)
 
 # %%
-df_train.head(2)
+X,y = augmenting.get_augmented_X_y(df_train.text, 
+                                   df_train[LABEL], 
+                                   sampling_strategy=1, 
+                                   label='label_sentimentnegative',
+                                  )
+
+# %%
+df_train = pd.concat([X,y], axis=1)
+
+# %%
 
 # %%
 tokenizer.unk_token, tokenizer.unk_token_id
@@ -105,19 +117,19 @@ tokenizer.unk_token, tokenizer.unk_token_id
 
 # %%
 
-# %% [markdown]
-# token_lens = []
-# for txt in df_train.text:
-#     tokens = tokenizer.encode(txt)
-#     token_lens.append(len(tokens))
+# %%
+#token_lens = []
+#for txt in df_train.text:
+#    tokens = tokenizer.encode(txt)
+#    token_lens.append(len(tokens))
 
-# %% [markdown]
-# max(token_lens)
+# %%
+#max(token_lens)
 
-# %% [markdown]
-# sns.distplot(token_lens)
-# plt.xlim([0, 300]);
-# plt.xlabel('Token count');
+# %%
+#sns.distplot(token_lens)
+#plt.xlim([0, 300]);
+#plt.xlabel('Token count');
 
 # %%
 
@@ -138,7 +150,7 @@ class OMPDataset(Dataset):
             add_special_tokens=True,
             max_length=self.max_len,
             return_token_type_ids=False,
-            pad_to_max_length=True,
+            padding = 'max_length',
             return_attention_mask=True,
             return_tensors='pt',
     )
@@ -171,9 +183,8 @@ def create_data_loader(df, label, tokenizer, max_len, batch_size):
 
 
 # %%
-BATCH_SIZE = 16
-MAX_LEN = 230
-LABEL = 'label_sentimentnegative'
+BATCH_SIZE = 4
+MAX_LEN = 264
 train_data_loader = create_data_loader(df_train, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
 val_data_loader = create_data_loader(df_val, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
 #test_data_loader = create_data_loader(df_test, tokenizer, MAX_LEN, BATCH_SIZE)
@@ -313,6 +324,8 @@ def eval_model(model, data_loader, loss_fn, device, n_examples):
             input_ids = d["input_ids"].to(device)
             attention_mask = d["attention_mask"].to(device)
             targets = d["targets"].to(device)
+            targets = targets.unsqueeze(1)
+            targets = targets.float()
             outputs = model(
                 input_ids=input_ids,
                 attention_mask=attention_mask
@@ -362,6 +375,13 @@ for epoch in range(EPOCHS):
         torch.save(model.state_dict(), 'best_model_state.bin')
         best_f1 = val_f1
 
-# %%
+# %% [markdown]
+# plt.plot(history['train_f1'], label='train F1')
+# plt.plot(history['val_f1'], label='validation F1')
+# plt.title('Training history')
+# plt.ylabel('F1')
+# plt.xlabel('Epoch')
+# plt.legend()
+# plt.ylim([0, 1]);
 
 # %%
