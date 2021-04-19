@@ -31,6 +31,8 @@ from collections import defaultdict
 from textwrap import wrap
 from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
+
+from datetime import datetime
 # %matplotlib inline
 # %config InlineBackend.figure_format='retina'
 
@@ -158,7 +160,7 @@ class OMPDataset(Dataset):
             'text': text,
             'input_ids': encoding['input_ids'].flatten(),
             'attention_mask': encoding['attention_mask'].flatten(),
-            'targets': torch.tensor(target, dtype=torch.long)
+            'targets': torch.tensor(target, dtype=torch.float)
     }
 
 
@@ -259,7 +261,8 @@ print(attention_mask.shape) # batch size x seq length
 
 # %%
 EPOCHS = 10
-optimizer = AdamW(model.parameters(), lr=2e-5, correct_bias=False)
+LEARNING_RATE = 1e-5
+optimizer = AdamW(model.parameters(), lr=LEARNING_RATE, correct_bias=False)
 total_steps = len(train_data_loader) * EPOCHS
 scheduler = get_linear_schedule_with_warmup(
     optimizer,
@@ -345,6 +348,7 @@ def eval_model(model, data_loader, loss_fn, device, n_examples):
 # %%time
 history = defaultdict(list)
 best_f1 = 0
+t = datetime.now().strftime("%Y-%m-%d_%H%M")
 for epoch in range(EPOCHS):
     print(f'Epoch {epoch + 1}/{EPOCHS}')
     print('-' * 10)
@@ -372,7 +376,8 @@ for epoch in range(EPOCHS):
     history['val_f1'].append(val_f1)
     history['val_loss'].append(val_loss)
     if val_f1 > best_f1:
-        torch.save(model.state_dict(), 'best_model_state.bin')
+        s = f"{val_f1:.2f}".replace('.','' 
+        torch.save(model.state_dict(), f'./models/model_gbert_pool_{LABEL}_{t}_f1{s}.bin')
         best_f1 = val_f1
 
 # %% [markdown]
