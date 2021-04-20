@@ -185,7 +185,7 @@ def create_data_loader(df, label, tokenizer, max_len, batch_size):
 
 
 # %%
-BATCH_SIZE = 4
+BATCH_SIZE = 2
 MAX_LEN = 264
 train_data_loader = create_data_loader(df_train, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
 val_data_loader = create_data_loader(df_val, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
@@ -221,24 +221,42 @@ data.keys()
 # print(model.config.vocab_size)
 
 # %%
-class SentimentClassifier(nn.Module):
+class PooledSentimentClassifier(nn.Module):
     def __init__(self):
-        super(SentimentClassifier, self).__init__()
+        super(PooledSentimentClassifier, self).__init__()
         self.bert = BertModel.from_pretrained("deepset/gbert-base")
-        self.drop = nn.Dropout(p=0.3)
+        self.dropout = nn.Dropout(p=0.3)
         self.out = nn.Linear(self.bert.config.hidden_size, 1)
+
     def forward(self, input_ids, attention_mask):
         _, pooled_output = self.bert(
           input_ids=input_ids,
           attention_mask=attention_mask
         ).values()
-        output = self.drop(pooled_output)
+        output = self.dropout(pooled_output)
+        output = self.out(output)
+        return torch.sigmoid(output)
+
+# %%
+class SequenceSentimentClassifier(nn.Module):
+    def __init__(self):
+        super(SequenceSentimentClassifier, self).__init__() # The module needs to be initialized before it can be assigned in the next line
+        self.bert = BertModel.from_pretrained("deepset/gbert-base")
+        self.dropout = nn.Dropout(p=0.3)
+        self.out = nn.Linear(self.bert.config.hidden_size, 1)
+
+    def forward(self, input_ids, attention_mask):
+        sequence_output, pooled_output = self.bert(
+          input_ids=input_ids,
+          attention_mask=attention_mask
+        ).values()
+        output = self.dropout(sequence_output)
         output = self.out(output)
         return torch.sigmoid(output)
 
 
 # %%
-model = SentimentClassifier()
+model = SequenceSentimentClassifier()
 model = model.to(device)
 
 # %%
