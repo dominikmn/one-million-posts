@@ -122,6 +122,8 @@ class Posts:
                 X, y = augmenting.get_augmented_X_y(X, y, label=self.current_label, sampling_strategy=self.sampling_strategy)
             elif self.balance_method == "oversample":
                 X, y = augmenting.get_oversampled_X_y(X, y, sampling_strategy=self.sampling_strategy)
+        elif split == "val" and balance_method == "translate":
+            X, y = augmenting.get_augmented_val_X_y(X, y, label=self.current_label)
         return X, y
 
     def set_label(self, label:str):
@@ -263,25 +265,41 @@ class Modeling:
 
         Args:
             splits: List of splits to evaluate. Default: ["train", "val"]
+            constant_preprocessor: Function to preprocess the data. Default: None
         """
         if self.model:
             for split in splits:
-                X, y = self.data.get_X_y(split=split)
-                if constant_preprocessor is not None:
-                    X = constant_preprocessor(X)
-
-                model = self.model
-
-                if self.threshold:
-                    y_pred = predict_with_threshold(model.predict_proba(X)[:, 1], self.threshold)
-                else:
-                    y_pred = model.predict(X)
-
-                f1, precision, recall, cm = compute_and_log_metrics(y, y_pred, split)
-                self.mlflow_logger.add_metric(f"{split} - F1", f1)
-                self.mlflow_logger.add_metric(f"{split} - precision", precision)
-                self.mlflow_logger.add_metric(f"{split} - recall", recall)
-                self.mlflow_logger.add_param(f"cm-{split}", cm)
+                self.__evaluate_and_log_to_mlflow(split=split, balance_method=None, constant_preprocessor=constant_preprocessor)
+                if split == "val":
+                    self.__evaluate_and_log_to_mlflow(split=split, balance_method="translate", constant_preprocessor=constant_preprocessor)
+                elif split == "train" and self.data.balance_method:
+                    self.__evaluate_and_log_to_mlflow(split=split, balance_method=self.data.balance_method, constant_preprocessor=constant_preprocessor)
         else:
             logger.info(f"No model available! Please run `train()` first.")
 
+    def __evaluate_and_log_to_mlflow(self, split, balance_method, constant_preprocessor):
+        """Helper function to evaluate a single split.
+
+        Args:
+            split: The split to evaluate.
+            balance_method: The balance_method to use.
+            constant_preprocessor: Function to preprocess the data.
+        """
+        X, y = self.data.get_X_y(split=split, balance_method=balance_method)
+        if constant_preprocessor is not None:
+            X = constant_preprocessor(X)
+
+        model = self.model
+
+        if self.threshold:
+            y_pred = predict_with_threshold(model.predict_proba(X)[:, 1], self.threshold)
+        else:
+            y_pred = model.predict(X)
+
+        name = f"{split}-bal" if balance_method else f"{split}"
+        logger.info(f"Evaluate: {name}")
+        f1, precision, recall, cm = compute_and_log_metrics(y, y_pred, split)
+        self.mlflow_logger.add_metric(f"{name} - F1", f1)
+        self.mlflow_logger.add_metric(f"{name} - precision", precision)
+        self.mlflow_logger.add_metric(f"{name} - recall", recall)
+        self.mlflow_logger.add_param(f"cm-{name}", cm)
