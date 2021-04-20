@@ -244,8 +244,8 @@ model = model.to(device)
 # %%
 input_ids = data['input_ids'].to(device)
 attention_mask = data['attention_mask'].to(device)
-print(input_ids.shape) # batch size x seq length
-print(attention_mask.shape) # batch size x seq length
+#print(input_ids.shape) # batch size x seq length
+#print(attention_mask.shape) # batch size x seq length
 
 # %% tags=[]
 #nn.functional.softmax(model(input_ids, attention_mask), dim=1)
@@ -348,7 +348,7 @@ def eval_model(model, data_loader, loss_fn, device, n_examples):
 # %%time
 history = defaultdict(list)
 best_f1 = 0
-t = datetime.now().strftime("%Y-%m-%d_%H%M")
+t = datetime.now().strftime("%y%m%d_%H%M")
 for epoch in range(EPOCHS):
     print(f'Epoch {epoch + 1}/{EPOCHS}')
     print('-' * 10)
@@ -376,8 +376,8 @@ for epoch in range(EPOCHS):
     history['val_f1'].append(val_f1)
     history['val_loss'].append(val_loss)
     if val_f1 > best_f1:
-        s = f"{val_f1:.2f}".replace('.','' 
-        torch.save(model.state_dict(), f'./models/model_gbert_pool_{LABEL}_{t}_f1{s}.bin')
+        file_name = f"./models/model_gbert_pool_{LABEL}_{t}.bin"
+        torch.save(model.state_dict(), file_name)
         best_f1 = val_f1
 
 # %% [markdown]
