@@ -217,7 +217,7 @@ class Modeling:
                 best_f1 = f1_temp
         return best_th
 
-    def train(self): #, mlflow_logger):
+    def train(self, constant_preprocessor=None): #, mlflow_logger):
         """Trains the estimator.
 
         If model implements predict_proba, calculate the best cut-off threshold.
@@ -233,6 +233,9 @@ class Modeling:
         self.mlflow_logger.add_param("balance_method", self.data.balance_method)
         if self.data.balance_method:
             self.mlflow_logger.add_param("sampling_strategy", self.data.sampling_strategy)
+        
+        if constant_preprocessor is not None:
+            X_train = constant_preprocessor(X_train)
         
         logger.info(f"Fit model")
         self.estimator.fit(X_train, y_train) #ToDo save to mlflow logger
@@ -255,7 +258,7 @@ class Modeling:
         return self.model
 
 
-    def evaluate(self, splits=["train", "val"]):
+    def evaluate(self, splits=["train", "val"], constant_preprocessor=None):
         """Calculate predictions and metrics.
 
         Args:
@@ -264,6 +267,8 @@ class Modeling:
         if self.model:
             for split in splits:
                 X, y = self.data.get_X_y(split=split)
+                if constant_preprocessor is not None:
+                    X = constant_preprocessor(X)
 
                 model = self.model
 
