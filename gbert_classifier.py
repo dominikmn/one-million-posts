@@ -22,13 +22,7 @@ import torch
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from pylab import rcParams
-import matplotlib.pyplot as plt
-from matplotlib import rc
-from sklearn.metrics import confusion_matrix, classification_report
 from collections import defaultdict
-from textwrap import wrap
 from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
 
@@ -39,18 +33,10 @@ from datetime import datetime
 
 # %% tags=[]
 tokenizer = AutoTokenizer.from_pretrained("deepset/gbert-base")
-
 #model = AutoModelForMaskedLM.from_pretrained("deepset/gbert-base")
 model = BertModel.from_pretrained("deepset/gbert-base")
 
 # %%
-type(model)
-
-# %%
-sns.set(style='whitegrid', palette='muted', font_scale=1.2)
-HAPPY_COLORS_PALETTE = ["#01BEFE", "#FFDD00", "#FF7D00", "#FF006D", "#ADFF02", "#8F00FF"]
-sns.set_palette(sns.color_palette(HAPPY_COLORS_PALETTE))
-rcParams['figure.figsize'] = 12, 8
 RANDOM_SEED = 42
 np.random.seed(RANDOM_SEED)
 torch.manual_seed(RANDOM_SEED)
@@ -58,82 +44,11 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #device = torch.device('cpu')
 
 # %%
-print(device)
-
-# %% [markdown]
-# ## Data loading
-
-# %%
-from utils import loading, feature_engineering, augmenting
-
-# %%
-LABEL = 'label_sentimentnegative'
-
-# %%
-df_train = loading.load_extended_posts(split='train', label=LABEL)
-df_train = feature_engineering.add_column_text(df_train)
-
-# %%
-X,y = augmenting.get_augmented_X_y(df_train.text, 
-                                   df_train[LABEL], 
-                                   sampling_strategy=1, 
-                                   label='label_sentimentnegative',
-                                  )
-
-# %%
-df_train = pd.concat([X,y], axis=1)
-
-# %%
-
-# %%
-tokenizer.unk_token, tokenizer.unk_token_id
+print(f'Computations will take place on: {device}')
 
 
 # %% [markdown]
-# ## Data preprocessing
-
-# %% [markdown]
-# sample_txt = 'Wann war ich das letzte mal draußen? Ich bin schon seit zwei Wochen zuhause.'
-#
-
-# %% [markdown]
-# tokens = tokenizer.tokenize(sample_txt)
-# token_ids = tokenizer.convert_tokens_to_ids(tokens)
-# print(f' Sentence: {sample_txt}')
-# print(f'   Tokens: {tokens}')
-# print(f'Token IDs: {token_ids}')
-
-# %% [markdown]
-# encoding = tokenizer.encode_plus(
-#     sample_txt,
-#     max_length=32,
-#     add_special_tokens=True, # Add '[CLS]' and '[SEP]'
-#     return_token_type_ids=False,
-#     pad_to_max_length=True,
-#     return_attention_mask=True,
-#     return_tensors='pt',  # Return PyTorch tensors
-# )
-# encoding.keys()
-
-# %%
-
-# %%
-
-# %%
-#token_lens = []
-#for txt in df_train.text:
-#    tokens = tokenizer.encode(txt)
-#    token_lens.append(len(tokens))
-
-# %%
-#max(token_lens)
-
-# %%
-#sns.distplot(token_lens)
-#plt.xlim([0, 300]);
-#plt.xlabel('Token count');
-
-# %%
+# ## Definitions
 
 # %%
 class OMPDataset(Dataset):
@@ -165,11 +80,6 @@ class OMPDataset(Dataset):
 
 
 # %%
-df_val = loading.load_extended_posts(split='val', label='label_sentimentnegative')
-df_val = feature_engineering.add_column_text(df_val)
-
-
-# %%
 def create_data_loader(df, label, tokenizer, max_len, batch_size):
     ds = OMPDataset(
         text=df.text.to_numpy(),
@@ -183,42 +93,6 @@ def create_data_loader(df, label, tokenizer, max_len, batch_size):
         num_workers=4
     )
 
-
-# %%
-BATCH_SIZE = 2
-MAX_LEN = 264
-train_data_loader = create_data_loader(df_train, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
-val_data_loader = create_data_loader(df_val, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
-#test_data_loader = create_data_loader(df_test, tokenizer, MAX_LEN, BATCH_SIZE)
-
-# %%
-data = next(iter(train_data_loader))
-data.keys()
-
-
-# %% [markdown]
-# print(data['input_ids'].shape)
-# print(data['attention_mask'].shape)
-# print(data['targets'].shape)
-# torch.Size([16, 160])
-# torch.Size([16, 160])
-# torch.Size([16])
-
-# %% [markdown]
-# last_hidden_state, pooled_output = model(
-#   input_ids=encoding['input_ids'],
-#   attention_mask=encoding['attention_mask']
-# ).values()
-
-# %% [markdown]
-# last_hidden_state
-
-# %%
-#print(last_hidden_state.shape)
-
-# %% [markdown]
-# print(model.config.hidden_size)
-# print(model.config.vocab_size)
 
 # %%
 class PooledSentimentClassifier(nn.Module):
@@ -253,41 +127,6 @@ class SequenceSentimentClassifier(nn.Module):
         output = self.dropout(sequence_output)
         output = self.out(output)
         return torch.sigmoid(output)
-
-
-# %%
-model = SequenceSentimentClassifier()
-model = model.to(device)
-
-# %%
-input_ids = data['input_ids'].to(device)
-attention_mask = data['attention_mask'].to(device)
-#print(input_ids.shape) # batch size x seq length
-#print(attention_mask.shape) # batch size x seq length
-
-# %% tags=[]
-#nn.functional.softmax(model(input_ids, attention_mask), dim=1)
-
-# %%
-#torch.cuda.empty_cache()
-
-# %%
-#torch.cuda.memory_summary(device=None, abbreviated=False)
-
-# %% [markdown]
-# ## Training
-
-# %%
-EPOCHS = 10
-LEARNING_RATE = 1e-5
-optimizer = AdamW(model.parameters(), lr=LEARNING_RATE, correct_bias=False)
-total_steps = len(train_data_loader) * EPOCHS
-scheduler = get_linear_schedule_with_warmup(
-    optimizer,
-    num_warmup_steps=0,
-    num_training_steps=total_steps
-)
-loss_fn = nn.BCELoss().to(device)
 
 
 # %%
@@ -362,8 +201,61 @@ def eval_model(model, data_loader, loss_fn, device, n_examples):
     return tp / div if div != 0 else 0, np.mean(losses)
 
 
+# %% [markdown]
+# ## Data loading
+
 # %%
-# %%time
+from utils import loading, feature_engineering, augmenting
+
+# %%
+LABEL = 'label_sentimentnegative'
+
+# %%
+df_train = loading.load_extended_posts(split='train', label=LABEL)
+df_train = feature_engineering.add_column_text(df_train)
+
+# %%
+X,y = augmenting.get_augmented_X_y(df_train.text, 
+                                   df_train[LABEL], 
+                                   sampling_strategy=1, 
+                                   label='label_sentimentnegative',
+                                  )
+
+# %%
+df_train = pd.concat([X,y], axis=1)
+
+# %%
+df_val = loading.load_extended_posts(split='val', label='label_sentimentnegative')
+df_val = feature_engineering.add_column_text(df_val)
+
+# %%
+BATCH_SIZE = 2
+MAX_LEN = 264
+train_data_loader = create_data_loader(df_train, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
+val_data_loader = create_data_loader(df_val, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
+#test_data_loader = create_data_loader(df_test, tokenizer, MAX_LEN, BATCH_SIZE)
+
+# %% [markdown]
+# ## Training
+
+# %%
+# Define the model
+model = PooledSentimentClassifier()
+model = model.to(device)
+
+# %%
+EPOCHS = 10
+LEARNING_RATE = 1e-5
+optimizer = AdamW(model.parameters(), lr=LEARNING_RATE, correct_bias=False)
+total_steps = len(train_data_loader) * EPOCHS
+scheduler = get_linear_schedule_with_warmup(
+    optimizer,
+    num_warmup_steps=0,
+    num_training_steps=total_steps
+)
+loss_fn = nn.BCELoss().to(device)
+
+# %%
 history = defaultdict(list)
 best_f1 = 0
 t = datetime.now().strftime("%y%m%d_%H%M")
