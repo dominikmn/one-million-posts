@@ -18,10 +18,13 @@
 # # German BERT - minimal setup #22 
 # Issue link: https://github.com/dominikmn/one-million-posts/issues/22
 
+# %% [markdown]
+# The pre-trained model can be found under:
+# https://huggingface.co/deepset/gbert-base
+
 # %%
 import transformers
 from transformers import BertModel, BertTokenizer, AdamW, get_linear_schedule_with_warmup
-#from transformers import AutoTokenizer, AutoModelForMaskedLM
 import torch
 
 import numpy as np
