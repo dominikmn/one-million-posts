@@ -52,4 +52,44 @@ for i in df_val_ina.sort_values('id_post')[['text','lang','orig']].iterrows():
 #
 # There are some inconsistencies and problems in the back-translations, but in general they seem to be okay. We accept them. Additional task: Add further positive examples from round 3.
 
+df_disc = pd.read_csv('./output/trans_label_discriminating.csv')
+
+df_disc = df_disc.fillna(value={"body": "", "headline": ""})
+df_disc["orig"] = df_disc.headline + " " + df_disc.body
+df_disc.orig = df_disc.orig.str.replace("\n", " ").str.replace("\r", " ")
+
+df_disc.lang.nunique()
+
+df_disc.lang.value_counts()
+
+# languages: sk, pt-pt, nl, ru, es, da, ja, zh-Hans, oversample the rest
+
+for i in df_disc.query('(lang=="km") or (lang=="tlh-Piqd") or (lang=="nl") or (lang=="da")').sort_values('id_post')[['text','lang','orig']].iloc[:24].iterrows():
+    print(list(i[1]))
+    print()
+    print()
+
+
+for i in df_disc.query('(lang=="zh-Hans") or (lang=="as") or (lang=="ru") or (lang=="de")').sort_values('id_post')[['text','lang','orig']].iloc[:24].iterrows():
+    print(list(i[1]))
+    print()
+    print()
+
+
+
+df_neg = pd.read_csv('./output/trans_label_sentimentnegative.csv')
+
+df_neg= df_neg.fillna(value={"body": "", "headline": ""})
+df_neg["orig"] = df_neg.headline + " " + df_neg.body
+df_neg.orig = df_neg.orig.str.replace("\n", " ").str.replace("\r", " ")
+
+df_neg.lang.value_counts()
+
+# resample: en, ja
+
+for i in df_disc.query('(lang=="kn") or (lang=="fil")').sort_values('id_post')[['text','lang','orig']].iloc[:12].iterrows():
+    print(list(i[1]))
+    print()
+    print()
+
 
