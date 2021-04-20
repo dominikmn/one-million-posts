@@ -5,8 +5,8 @@ body {
 }
 
 .header {
-    background-color: #222222;
-    height: 256px;
+    background-color: #636363; /* #222222; #EC008E; */
+    height: 220px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -24,10 +24,12 @@ body {
     font-weight: bold;
     text-align: center;
     margin: 0 auto;
+    font-variant: small-caps;
+    letter-spacing: 0.2rem;
 }
 
 .header-description {
-    color: #CFCFCF;
+    color: #FFFFFF; /* #CFCFCF; */
     margin: 4px auto;
     text-align: center;
     max-width: 384px;
