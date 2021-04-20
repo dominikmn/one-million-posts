@@ -14,10 +14,14 @@
 #     name: python3
 # ---
 
+# %% [markdown]
+# # German BERT - minimal setup #22 
+# Issue link: https://github.com/dominikmn/one-million-posts/issues/22
+
 # %%
 import transformers
 from transformers import BertModel, BertTokenizer, AdamW, get_linear_schedule_with_warmup
-from transformers import AutoTokenizer, AutoModelForMaskedLM
+#from transformers import AutoTokenizer, AutoModelForMaskedLM
 import torch
 
 import numpy as np
@@ -27,14 +31,12 @@ from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
 
 from datetime import datetime
-# %matplotlib inline
-# %config InlineBackend.figure_format='retina'
+
+from utils import loading, feature_engineering, augmenting
 
 
-# %% tags=[]
-tokenizer = AutoTokenizer.from_pretrained("deepset/gbert-base")
-#model = AutoModelForMaskedLM.from_pretrained("deepset/gbert-base")
-model = BertModel.from_pretrained("deepset/gbert-base")
+# %% [markdown] tags=[]
+# ## Global params
 
 # %%
 RANDOM_SEED = 42
@@ -204,8 +206,6 @@ def eval_model(model, data_loader, loss_fn, device, n_examples):
 # %% [markdown]
 # ## Data loading
 
-# %%
-from utils import loading, feature_engineering, augmenting
 
 # %%
 LABEL = 'label_sentimentnegative'
@@ -231,6 +231,7 @@ df_val = feature_engineering.add_column_text(df_val)
 # %%
 BATCH_SIZE = 2
 MAX_LEN = 264
+tokenizer = BertTokenizer.from_pretrained("deepset/gbert-base")
 train_data_loader = create_data_loader(df_train, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
 val_data_loader = create_data_loader(df_val, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
 #test_data_loader = create_data_loader(df_test, tokenizer, MAX_LEN, BATCH_SIZE)
@@ -289,14 +290,5 @@ for epoch in range(EPOCHS):
         file_name = f"./models/model_gbert_pool_{LABEL}_{t}.bin"
         torch.save(model.state_dict(), file_name)
         best_f1 = val_f1
-
-# %% [markdown]
-# plt.plot(history['train_f1'], label='train F1')
-# plt.plot(history['val_f1'], label='validation F1')
-# plt.title('Training history')
-# plt.ylabel('F1')
-# plt.xlabel('Epoch')
-# plt.legend()
-# plt.ylim([0, 1]);
 
 # %%
