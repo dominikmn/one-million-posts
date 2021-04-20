@@ -199,26 +199,6 @@ class Modeling:
         self.model = None
         self.threshold = None
     
-    def calculate_best_threshold(self, y_true: pd.Series, y_pred_proba: np.array) -> float:
-        """Calculate the best threshold value for classification.
-
-        Args:
-            y_pred_proba: Predicted probabilities.
-            y_true: Series with true target labels.
-
-        Returns:
-            best_th: The threshold value that maximizes the f1-score.
-        """
-        best_th = 0.0
-        best_f1 = 0.0
-        for th in np.arange(0.05, 0.96, 0.05):
-            y_pred_temp = predict_with_threshold(y_pred_proba, th)
-            f1_temp = f1_score(y_true, y_pred_temp)
-            if f1_temp > best_f1:
-                best_th = th
-                best_f1 = f1_temp
-        return best_th
-
     def train(self, constant_preprocessor=None): #, mlflow_logger):
         """Trains the estimator.
 
@@ -241,12 +221,6 @@ class Modeling:
         
         logger.info(f"Fit model")
         self.estimator.fit(X_train, y_train) #ToDo save to mlflow logger
-
-        # select best threshold if model implements predict_proba
-        if self.fit_threshold and callable(getattr(self.estimator, "predict_proba", None)):
-            y_train_proba = self.estimator.predict_proba(X_train)[:, 1]
-            self.threshold = self.calculate_best_threshold(y_train, y_train_proba)
-            self.mlflow_logger.add_param("threshold", self.threshold)
 
         # store best parameters if model is GridSearch
         if isinstance(self.estimator, GridSearchCV):
@@ -291,10 +265,7 @@ class Modeling:
 
         model = self.model
 
-        if self.threshold:
-            y_pred = predict_with_threshold(model.predict_proba(X)[:, 1], self.threshold)
-        else:
-            y_pred = model.predict(X)
+        y_pred = model.predict(X)
 
         name = f"{split}-bal" if balance_method else f"{split}"
         logger.info(f"Evaluate: {name}")
