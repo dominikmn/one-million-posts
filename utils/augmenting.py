@@ -49,3 +49,35 @@ def get_oversampled_X_y(X, y, sampling_strategy):
         X_over, y_over = os.fit_resample(X_temp, y_temp)
         return pd.Series(X_over.ravel()), pd.Series(y_over.ravel())
         
+def get_augmented_val(df, label):
+    '''get a dataset with augmented texts for the minority positive label
+    Arguments: X, y - pandas series containing the training data that needs to be augmented
+               label - label that needs to be augmented
+               sampling_strategy - float representing the proportion of positive vs negative labels in the augmented dataframe (range [>0.0; <=1.ß])
+    Return: augmented X, y'''
+    
+    try:
+        df_aug = pd.read_csv(f'./output/trans_val_{label}.csv')
+        return pd.concat((df, df_aug))
+    except FileNotFoundError as e:
+        print(f'Requested augmentation data for label {label} not available. Returned original df')
+        return df
+
+
+def get_augmented_val_X_y(X, y, label):
+    '''get a dataset with augmented texts for the minority positive label
+    Arguments: X, y - pandas series containing the training data that needs to be augmented
+               label - label that needs to be augmented
+               sampling_strategy - float representing the proportion of positive vs negative labels in the augmented dataframe (range [>0.0; <=1.ß])
+    Return: augmented X, y'''
+    
+    try:
+        df_aug = pd.read_csv(f'./output/trans_val_{label}.csv')
+        X_aug = df_aug['text']
+        y_aug = df_aug[label]
+        return pd.concat((X, X_aug)), pd.concat((y, y_aug))
+    except FileNotFoundError as e:
+        print(f'Requested augmentation data for label {label} not available. Returned original df')
+        return df
+
+
