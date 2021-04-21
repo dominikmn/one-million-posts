@@ -37,7 +37,11 @@ from torch.utils.data import Dataset, DataLoader
 
 from datetime import datetime
 
-from utils import loading, feature_engineering, augmenting
+from utils import loading, feature_engineering, augmenting, scoring
+from utils import modeling as m
+
+import mlflow
+from modeling.config import TRACKING_URI, EXPERIMENT_NAME#, TRACKING_URI_DEV
 
 import logging
 logger = logging.getLogger(__name__)
@@ -131,7 +135,8 @@ def train_epoch(
   optimizer,
   device,
   scheduler,
-  n_examples
+  n_examples,
+  mlflow_logger
 ):
     model = model.train()
     losses = []
@@ -162,11 +167,22 @@ def train_epoch(
         scheduler.step()
         optimizer.zero_grad()
         div = tp + 0.5 * ( fp + fn)
-    return tp / div if div != 0 else 0, np.mean(losses)
+        f1 = tp / div if div != 0 else 0
+        precision = tp / (tp+fp) if (tp+fp)!=0 else 0
+        recall = tp / (tp+fn) if (tp+fn)!=0 else 0
+        cm = {'TN':tn, 'FP':fp, 'FN':fn, 'TP':tp}
+
+        split = 'train'
+        name = f"{split}-bal"
+        mlflow_logger.add_metric(f"{name} - F1", f1)
+        mlflow_logger.add_metric(f"{name} - precision", precision)
+        mlflow_logger.add_metric(f"{name} - recall", recall)
+        mlflow_logger.add_param(f"cm-{name}", cm)
+    return f1, np.mean(losses)
 
 
 # %%
-def eval_model(model, data_loader, loss_fn, device, n_examples):
+def eval_model(model, data_loader, loss_fn, device, n_examples, mlflow_logger):
     model = model.eval()
     losses = []
     tp = 0
@@ -191,31 +207,68 @@ def eval_model(model, data_loader, loss_fn, device, n_examples):
             fp += ((1 - targets) * preds).sum(dim=0).to(torch.float32)
             fn += (targets * (1 - preds)).sum(dim=0).to(torch.float32)
             losses.append(loss.item())
-            div = tp + 0.5 * ( fp + fn)
-    return tp / div if div != 0 else 0, np.mean(losses)
 
+            div = tp + 0.5 * ( fp + fn)
+            f1 = tp / div if div != 0 else 0
+            precision = tp / (tp+fp) if (tp+fp)!=0 else 0
+            recall = tp / (tp+fn) if (tp+fn)!=0 else 0
+            cm = {'TN':tn, 'FP':fp, 'FN':fn, 'TP':tp}
+
+            split = 'val'
+            name = f"{split}-bal"
+            mlflow_logger.add_metric(f"{name} - F1", f1)
+            mlflow_logger.add_metric(f"{name} - precision", precision)
+            mlflow_logger.add_metric(f"{name} - recall", recall)
+            mlflow_logger.add_param(f"cm-{name}", cm)
+    return f1, np.mean(losses) 
 
 # %% [markdown]
 # ## Main method
 
 # %%
-def make_model(label):
+def make_model(label, method, strategy):
     BATCH_SIZE = 2
     MAX_LEN = 264
     EPOCHS = 10
     LEARNING_RATE = 1e-5
 
+    # ## MLflow setup
+    mlflow_params=dict()
+    mlflow_params["normalization"] = 'norm'
+    mlflow_params["vectorizer"] = 'deepset/gbert-base'
+    mlflow_params["model"] = "deepset/gbert-base"
+    #mlflow_params["grid_search_params"] = str('')[:249]
+    mlflow_tags = {
+        "cycle3": True,
+    }
+    IS_DEVELOPMENT = False
+    mlflow_logger = m.MLFlowLogger(
+        uri=TRACKING_URI,
+        experiment=EXPERIMENT_NAME,
+        is_dev=IS_DEVELOPMENT,
+        params=mlflow_params,
+        tags=mlflow_tags
+    )
+
     # ## Data loading
-    df_train = loading.load_extended_posts(split='train', label=label)
-    df_train = feature_engineering.add_column_text(df_train)
-    X,y = augmenting.get_augmented_X_y(df_train.text, 
-                                    df_train[label], 
-                                    sampling_strategy=1, 
-                                    label='label_sentimentnegative',
-                                    )
-    df_train = pd.concat([X,y], axis=1)
-    df_val = loading.load_extended_posts(split='val', label=label)
-    df_val = feature_engineering.add_column_text(df_val)
+    data = m.Posts()
+    data.set_label(label=label)
+    data.set_balance_method(balance_method=method, sampling_strategy=strategy)
+    X_train, y_train = data.get_X_y('train')
+    df_train = pd.concat([X_train,y_train], axis=1)
+    X_val, y_val = data.get_X_y('val')
+    df_val = pd.concat([X_val,y_val], axis=1)
+
+    #df_train = loading.load_extended_posts(split='train', label=label)
+    #df_train = feature_engineering.add_column_text(df_train)
+    #X,y = augmenting.get_augmented_X_y(df_train.text,
+    #                                df_train[label],
+    #                                sampling_strategy=1,
+    #                                label='label_sentimentnegative',
+    #                                )
+    #df_train = pd.concat([X,y], axis=1)
+    #df_val = loading.load_extended_posts(split='val', label=label)
+    #df_val = feature_engineering.add_column_text(df_val)
 
     tokenizer = BertTokenizer.from_pretrained("deepset/gbert-base")
     train_data_loader = create_data_loader(df_train, label, tokenizer, MAX_LEN, BATCH_SIZE)
@@ -267,9 +320,29 @@ def make_model(label):
             torch.save(model.state_dict(), file_name)
             best_f1 = val_f1
 
+    #############################################
+    #MLflow logging
+
+    mlflow_logger.add_param("label", data.current_label)
+    mlflow_logger.add_param("balance_method", data.balance_method)
+    if data.balance_method:
+        mlflow_logger.add_param("sampling_strategy", data.sampling_strategy)
+    mlflow_logger.add_model(None)
+
+    with mlflow.start_run(run_name='deepset/gbert-base') as run:
+        mlflow_logger.log()
+
+
+
 # %%
 if __name__ == "__main__":
-    LABELS = ['label_sentimentnegative']
-    for l in LABELS:
-        make_model(l)
+    #TARGET_LABELS = ['label_discriminating', 'label_inappropriate', 'label_offtopic',
+    #    'label_sentimentnegative', 'label_needsmoderation', 'label_negative']
+    TARGET_LABELS = ['label_negative']
+    trans_os = {'translate':[0.9], 'oversample':[0.9]}
+
+    for method, strat in trans_os.items():
+        for strategy in strat:
+            for l in TARGET_LABELS:
+                make_model(l, method, strategy)
     
