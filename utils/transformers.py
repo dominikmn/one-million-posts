@@ -15,7 +15,8 @@ logger.setLevel(logging.INFO)
 
 def load_embedding_vectors(embedding_style, file=None):
     """
-    Helper function in order to load word2vec or glove vector embedding files provided on https://deepset.ai/german-word-embeddings.
+    Helper function in order to load word2vec or glove vector embedding files.
+    The expected file format is the one found on https://deepset.ai/german-word-embeddings.
 
     Args: 
       embedding_style: {'word2vec', 'glove'}, default=None
@@ -23,18 +24,22 @@ def load_embedding_vectors(embedding_style, file=None):
     Returns: 
       embedding_dict: dict whose keys are words and the values are the related vectors.
     """
+    logger.info(f"Loading embedding dictionary for {embedding_style}.")
     if embedding_style not in ('word2vec', 'glove'):
        raise ValueError("embedding_style must be any of {'word2vec', 'glove'}") 
     file_cached = f'./cache/embedding_{embedding_style}.pickle'
     try:
         with open(file_cached, 'rb') as f_pickle:
-            logger.info(f"Loading existing embedding-pickle from {file_cached} ...")
+            logger.info(f"Taking cached embedding dictionary from {file_cached} ...")
             embedding_dict = pickle.load(f_pickle) 
+            logger.info(f"Embedding dictionary loaded.")
     except FileNotFoundError:
+        logger.info(f"No existing embedding dictionary found in the cache: ./cache/embedding_{embedding_style}.pickle")
         if file is None:
-            raise ValueError("Argument file is None. Argument file may not be empty as no pre-computed pickle could be found in ./cache/.") 
+            file = f'./embeddings/{embedding_style}_vectors.txt'
         embedding_dict = dict()
         with open(file, 'r') as f:
+            logger.info(f"Computing new embedding dictionary from source file {file} ...")
             for line in tqdm.tqdm(f.readlines()):
                 split_line = line.split()
                 if embedding_style == 'word2vec':
@@ -46,10 +51,11 @@ def load_embedding_vectors(embedding_style, file=None):
             if embedding_style == 'glove':
                 embedding_dict['UNK'] = embedding_dict['<unk>']
                 del embedding_dict['<unk>']
-        logger.info(f"Computed embedding dictionary.")
-        logger.info(f"Dumped embedding dictionary as pickle {file_cached} ...")
+            logger.info(f"Embedding dictionary computed.")
         with open(file_cached, 'wb') as f_pickle:
+            logger.info(f"Dumping embedding dictionary as pickle {file_cached} ...")
             pickle.dump(embedding_dict, file=f_pickle)
+            logger.info(f"Embedding dictionary dumped.")
     return embedding_dict
 
 class MeanEmbeddingVectorizer(object):
