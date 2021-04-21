@@ -33,7 +33,7 @@ if __name__ == "__main__":
     
     data = m.Posts()
 
-    trans_os = {'translate':[1.0], 'oversample':[1.0]}
+    trans_os = {'translate':[0.9], 'oversample':[0.9]}
 
     TARGET_LABELS = ['label_discriminating', 'label_inappropriate', 'label_offtopic',
         'label_sentimentnegative', 'label_needsmoderation', 'label_negative']
