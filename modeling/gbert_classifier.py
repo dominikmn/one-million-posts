@@ -21,6 +21,8 @@
 # %% [markdown]
 # The pre-trained model can be found under:
 # https://huggingface.co/deepset/gbert-base
+#
+# The code below was initially built up with the help of this tutorial: https://curiousily.com/posts/sentiment-analysis-with-bert-and-hugging-face-using-pytorch-and-python/
 
 # %%
 import transformers
@@ -37,6 +39,11 @@ from datetime import datetime
 
 from utils import loading, feature_engineering, augmenting
 
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s: %(message)s")
+logging.getLogger("pyhive").setLevel(logging.CRITICAL)  # avoid excessive logs
+logger.setLevel(logging.INFO)
 
 # %% [markdown] tags=[]
 # ## Global params
@@ -49,7 +56,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #device = torch.device('cpu')
 
 # %%
-print(f'Computations will take place on: {device}')
+logger.info(f'Computations will take place on: {device}')
 
 
 # %% [markdown]
@@ -100,9 +107,9 @@ def create_data_loader(df, label, tokenizer, max_len, batch_size):
 
 
 # %%
-class PooledSentimentClassifier(nn.Module):
+class BinaryClassifier(nn.Module):
     def __init__(self):
-        super(PooledSentimentClassifier, self).__init__()
+        super(BinaryClassifier, self).__init__()
         self.bert = BertModel.from_pretrained("deepset/gbert-base")
         self.dropout = nn.Dropout(p=0.3)
         self.out = nn.Linear(self.bert.config.hidden_size, 1)
@@ -115,24 +122,6 @@ class PooledSentimentClassifier(nn.Module):
         output = self.dropout(pooled_output)
         output = self.out(output)
         return torch.sigmoid(output)
-
-# %%
-class SequenceSentimentClassifier(nn.Module):
-    def __init__(self):
-        super(SequenceSentimentClassifier, self).__init__() # The module needs to be initialized before it can be assigned in the next line
-        self.bert = BertModel.from_pretrained("deepset/gbert-base")
-        self.dropout = nn.Dropout(p=0.3)
-        self.out = nn.Linear(self.bert.config.hidden_size, 1)
-
-    def forward(self, input_ids, attention_mask):
-        sequence_output, pooled_output = self.bert(
-          input_ids=input_ids,
-          attention_mask=attention_mask
-        ).values()
-        output = self.dropout(sequence_output)
-        output = self.out(output)
-        return torch.sigmoid(output)
-
 
 # %%
 def train_epoch(
@@ -207,91 +196,80 @@ def eval_model(model, data_loader, loss_fn, device, n_examples):
 
 
 # %% [markdown]
-# ## Data loading
-
-
-# %%
-LABEL = 'label_sentimentnegative'
+# ## Main method
 
 # %%
-df_train = loading.load_extended_posts(split='train', label=LABEL)
-df_train = feature_engineering.add_column_text(df_train)
+def make_model(label):
+    BATCH_SIZE = 2
+    MAX_LEN = 264
+    EPOCHS = 10
+    LEARNING_RATE = 1e-5
 
-# %%
-X,y = augmenting.get_augmented_X_y(df_train.text, 
-                                   df_train[LABEL], 
-                                   sampling_strategy=1, 
-                                   label='label_sentimentnegative',
-                                  )
+    # ## Data loading
+    df_train = loading.load_extended_posts(split='train', label=label)
+    df_train = feature_engineering.add_column_text(df_train)
+    X,y = augmenting.get_augmented_X_y(df_train.text, 
+                                    df_train[label], 
+                                    sampling_strategy=1, 
+                                    label='label_sentimentnegative',
+                                    )
+    df_train = pd.concat([X,y], axis=1)
+    df_val = loading.load_extended_posts(split='val', label=label)
+    df_val = feature_engineering.add_column_text(df_val)
 
-# %%
-df_train = pd.concat([X,y], axis=1)
+    tokenizer = BertTokenizer.from_pretrained("deepset/gbert-base")
+    train_data_loader = create_data_loader(df_train, label, tokenizer, MAX_LEN, BATCH_SIZE)
+    val_data_loader = create_data_loader(df_val, label, tokenizer, MAX_LEN, BATCH_SIZE)
+    #test_data_loader = create_data_loader(df_test, tokenizer, MAX_LEN, BATCH_SIZE)
 
-# %%
-df_val = loading.load_extended_posts(split='val', label='label_sentimentnegative')
-df_val = feature_engineering.add_column_text(df_val)
-
-# %%
-BATCH_SIZE = 2
-MAX_LEN = 264
-tokenizer = BertTokenizer.from_pretrained("deepset/gbert-base")
-train_data_loader = create_data_loader(df_train, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
-val_data_loader = create_data_loader(df_val, LABEL, tokenizer, MAX_LEN, BATCH_SIZE)
-#test_data_loader = create_data_loader(df_test, tokenizer, MAX_LEN, BATCH_SIZE)
-
-# %% [markdown]
-# ## Training
-
-# %%
-# Define the model
-model = PooledSentimentClassifier()
-model = model.to(device)
-
-# %%
-EPOCHS = 10
-LEARNING_RATE = 1e-5
-optimizer = AdamW(model.parameters(), lr=LEARNING_RATE, correct_bias=False)
-total_steps = len(train_data_loader) * EPOCHS
-scheduler = get_linear_schedule_with_warmup(
-    optimizer,
-    num_warmup_steps=0,
-    num_training_steps=total_steps
-)
-loss_fn = nn.BCELoss().to(device)
-
-# %%
-history = defaultdict(list)
-best_f1 = 0
-t = datetime.now().strftime("%y%m%d_%H%M")
-for epoch in range(EPOCHS):
-    print(f'Epoch {epoch + 1}/{EPOCHS}')
-    print('-' * 10)
-    train_f1, train_loss = train_epoch(
-        model,
-        train_data_loader,
-        loss_fn,
+    # ## Instantiation
+    model = BinaryClassifier().to(device)
+    optimizer = AdamW(model.parameters(), lr=LEARNING_RATE, correct_bias=False)
+    total_steps = len(train_data_loader) * EPOCHS
+    scheduler = get_linear_schedule_with_warmup(
         optimizer,
-        device,
-        scheduler,
-        len(df_train)
-    )
-    print(f'Train loss {train_loss} F1 {train_f1}')
-    val_f1, val_loss = eval_model(
-        model,
-        val_data_loader,
-        loss_fn,
-        device,
-        len(df_val)
-    )
-    print(f'Val   loss {val_loss} F1 {val_f1}')
-    print()
-    history['train_f1'].append(train_f1)
-    history['train_loss'].append(train_loss)
-    history['val_f1'].append(val_f1)
-    history['val_loss'].append(val_loss)
-    if val_f1 > best_f1:
-        file_name = f"./models/model_gbert_pool_{LABEL}_{t}.bin"
-        torch.save(model.state_dict(), file_name)
-        best_f1 = val_f1
+        num_warmup_steps=0,
+        num_training_steps=total_steps,
+        )
+    loss_fn = nn.BCELoss().to(device)
+
+    history = defaultdict(list)
+    best_f1 = 0
+    t = datetime.now().strftime("%y%m%d_%H%M")
+    for epoch in range(EPOCHS):
+        logger.info(f'Epoch {epoch + 1}/{EPOCHS}')
+        logger.info('-' * 10)
+        train_f1, train_loss = train_epoch(
+            model,
+            train_data_loader,
+            loss_fn,
+            optimizer,
+            device,
+            scheduler,
+            len(df_train)
+        )
+        logger.info(f'Train loss {train_loss} F1 {train_f1}')
+        val_f1, val_loss = eval_model(
+            model,
+            val_data_loader,
+            loss_fn,
+            device,
+            len(df_val)
+        )
+        logger.info(f'Val   loss {val_loss} F1 {val_f1}')
+        print()
+        history['train_f1'].append(train_f1)
+        history['train_loss'].append(train_loss)
+        history['val_f1'].append(val_f1)
+        history['val_loss'].append(val_loss)
+        if val_f1 > best_f1:
+            file_name = f"./models/model_gbert_pool_{label}_{t}.bin"
+            torch.save(model.state_dict(), file_name)
+            best_f1 = val_f1
 
 # %%
+if __name__ == "__main__":
+    LABELS = ['label_sentimentnegative']
+    for l in LABELS:
+        make_model(l)
+    
