@@ -140,3 +140,37 @@ def add_column_text(df: pd.DataFrame) -> pd.DataFrame:
     df_text["text"] = df_text.headline + " " + df_text.body
     df_text.text = df_text.text.str.replace("\n", " ").str.replace("\r", " ")
     return df_text
+
+
+def label_needsmoderation(df):
+    '''helper function to add label_needsmoderation for a single row of df'''
+    if (df.label_sentimentnegative==0) and (df.label_discriminating==0) and (df.label_inappropriate==0) and (df.label_offtopic==0):
+        return 0
+    elif (df.label_sentimentnegative==1) or (df.label_discriminating==1) or (df.label_inappropriate==1) or (df.label_offtopic==1):
+        return 1
+    else:
+        return np.nan
+    
+def label_negative(df):
+    '''helper function to add label_needsmoderation for a single row of df'''
+    if (df.label_sentimentnegative==0) and (df.label_discriminating==0) and (df.label_inappropriate==0):
+        return 0
+    elif (df.label_sentimentnegative==1) or (df.label_discriminating==1) or (df.label_inappropriate==1):
+        return 1
+    else:
+        return np.nan
+
+def add_column_label_needsmoderation(df):
+    """Add column `label_needsmoderation` .
+
+    label_needs moderation is true post is either discriminating, inappropriate, in negative sentiment or off-topic
+
+    Args:
+        df: The posts DataFrame with the negative labels.
+
+    Returns:
+        df: A copy of df, extended by `label_needsmoderation`.
+    """
+    df['label_needsmoderation'] = df.apply(label_needsmoderation, axis=1)
+    df['label_negative'] = df.apply(label_negative, axis=1)
+    return df
