@@ -3,6 +3,15 @@ import numpy as np
 import mlflow
 from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
 from typing import Tuple, Dict
+import logging
+
+
+# set logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s: %(message)s")
+logging.getLogger("pyhive").setLevel(logging.CRITICAL)  # avoid excessive logs
+logger.setLevel(logging.INFO)
+
 
 category_map = {
                  'argumentation': 'label_argumentsused',
