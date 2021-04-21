@@ -75,8 +75,8 @@ if __name__ == "__main__":
                             "vectorizer__stop_words" : [stopwords, None],
                             "vectorizer__min_df": [0.],
                             "vectorizer__max_df": [0.9],
-                            'clf__max_depth': [5, 10, 40],
-                            'clf__min_samples_leaf': [1, 5, 10],
+                            'clf__max_depth': [5, 10, 20],
+                            'clf__min_samples_leaf': [5, 10],
                         }
                         grid_search_params = param_grid.copy()
                         # MLFlow params have limited characters, therefore stopwords must not be given as list
@@ -88,8 +88,8 @@ if __name__ == "__main__":
                             ("clf", RandomForestClassifier(random_state=42)),
                             ])
                         param_grid = {
-                            'clf__max_depth': [5, 10, 40],
-                            'clf__min_samples_leaf': [1, 5, 10],
+                            'clf__max_depth': [5, 10, 20],
+                            'clf__min_samples_leaf': [5, 10],
                         }
                         grid_search_params = param_grid.copy()
                         mlflow_params["normalization"] = 'norm'
