@@ -72,7 +72,7 @@ def get_augmented_val_X_y(X, y, label):
                sampling_strategy - float representing the proportion of positive vs negative labels in the augmented dataframe (range [>0.0; <=1.ß])
     Return: augmented X, y'''
     
-    label_range = ['label_sentimentnegative', 'label_inappropriate', 'label_discriminating', 'label_offtopic']
+    label_range = ['label_sentimentnegative', 'label_inappropriate', 'label_discriminating', 'label_offtopic','label_needsmoderation', 'label_negative']
     
     if label in label_range:
         file_cached = "./cache/df_r3.csv"
@@ -95,6 +95,7 @@ def get_augmented_val_X_y(X, y, label):
             df_r3 = df_r3.query('ann_round==3').copy()
             df_r3.to_csv(file_cached)
 
+        df_r3 = feature_engineering.add_column_label_needsmoderation(df_r3)
         art_list = list(df_r3.id_article.unique())
         df_ann = pd.DataFrame(columns=df_r3.columns)
 
