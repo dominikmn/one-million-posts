@@ -10,7 +10,7 @@ from sklearn.metrics import f1_score, recall_score, precision_score, confusion_m
 from sklearn.model_selection import GridSearchCV
 
 # one-million-post utils
-from utils import loading, feature_engineering, augmenting
+from utils import loading, feature_engineering, augmenting, scoring
 
 # mlflow
 import mlflow
@@ -25,33 +25,6 @@ logger.setLevel(logging.INFO)
 
 
 
-def compute_and_log_metrics(
-    y_true: pd.Series, y_pred: pd.Series, split: str="train"
-) -> Tuple[float, float, float]:
-    """Computes and logs metrics logger
-
-    Args:
-        y_true: The true target classification
-        y_pred: The predicted target classification
-        split: The split of the dataset ["test", "val", "train"]
-
-    Returns:
-        f1: The f1_score
-        precision: The precision_score
-        recall: The recall_score
-        cm: Dictionary with the confusion matrix
-    """
-    f1 = f1_score(y_true, y_pred)
-    precision = precision_score(y_true, y_pred)
-    recall = recall_score(y_true, y_pred)
-
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
-    cm = {'TN':tn, 'FP':fp, 'FN':fn, 'TP':tp}
-
-    logger.info(f"Performance on {split} set: F1 = {f1:.1f}, precision = {precision:.1%}, recall = {recall:.1%}")
-    logger.info(f"Confusion matrix: {cm}")
-    return f1, precision, recall, cm
-            
 
 def predict_with_threshold(y_pred_proba: np.array, threshold: float) -> np.array:
     return (y_pred_proba >= threshold).astype(int)
@@ -274,7 +247,7 @@ class Modeling:
 
         name = f"{split}-bal" if balance_method else f"{split}"
         logger.info(f"Evaluate: {name}")
-        f1, precision, recall, cm = compute_and_log_metrics(y, y_pred, split)
+        f1, precision, recall, cm = scoring.compute_and_log_metrics(y, y_pred, split)
         self.mlflow_logger.add_metric(f"{name} - F1", f1)
         self.mlflow_logger.add_metric(f"{name} - precision", precision)
         self.mlflow_logger.add_metric(f"{name} - recall", recall)
