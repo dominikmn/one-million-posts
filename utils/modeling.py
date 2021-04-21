@@ -43,7 +43,7 @@ class Posts:
     """
     AVAILABLE_LABELS = ['label_argumentsused', 'label_discriminating', 'label_inappropriate',
                 'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
-                'label_sentimentnegative', 'label_sentimentpositive',]
+                'label_sentimentnegative', 'label_sentimentpositive', 'label_needsmoderation', 'label_negative']
     
     def __init__(self):
         df = loading.load_extended_posts()

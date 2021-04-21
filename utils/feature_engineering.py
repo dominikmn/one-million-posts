@@ -144,21 +144,19 @@ def add_column_text(df: pd.DataFrame) -> pd.DataFrame:
 
 def label_needsmoderation(df):
     '''helper function to add label_needsmoderation for a single row of df'''
-    if (df.label_sentimentnegative==0) and (df.label_discriminating==0) and (df.label_inappropriate==0) and (df.label_offtopic==0):
-        return 0
-    elif (df.label_sentimentnegative==1) or (df.label_discriminating==1) or (df.label_inappropriate==1) or (df.label_offtopic==1):
-        return 1
-    else:
-        return np.nan
+    labels = ["label_sentimentnegative", "label_discriminating", "label_inappropriate", "label_offtopic"]
+    df_out = df.copy()
+    df_out["label_needsmoderation"] = df_out[labels].any(axis=1)
+    df_out.loc[df_out[labels].isna().any(axis=1), "label_needsmoderation"] = np.NaN
+    return df_out
     
 def label_negative(df):
     '''helper function to add label_needsmoderation for a single row of df'''
-    if (df.label_sentimentnegative==0) and (df.label_discriminating==0) and (df.label_inappropriate==0):
-        return 0
-    elif (df.label_sentimentnegative==1) or (df.label_discriminating==1) or (df.label_inappropriate==1):
-        return 1
-    else:
-        return np.nan
+    labels = ["label_sentimentnegative", "label_discriminating", "label_inappropriate"]
+    df_out = df.copy()
+    df_out["label_negative"] = df_out[labels].any(axis=1)
+    df_out.loc[df_out[labels].isna().any(axis=1), "label_negative"] = np.NaN
+    return df_out
 
 def add_column_label_needsmoderation(df):
     """Add column `label_needsmoderation` .
@@ -171,6 +169,6 @@ def add_column_label_needsmoderation(df):
     Returns:
         df: A copy of df, extended by `label_needsmoderation`.
     """
-    df['label_needsmoderation'] = df.apply(label_needsmoderation, axis=1)
-    df['label_negative'] = df.apply(label_negative, axis=1)
+    df = label_needsmoderation(df)
+    df = label_negative(df)
     return df
