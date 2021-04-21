@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Tuple, Dict
 
@@ -162,6 +163,9 @@ class MLFlowLogger:
     def add_metric(self, name:str, value):
         self.metrics[name] = value
 
+    def add_model(self, model):
+        self.model = model
+
     def log(self):
         """Log params, metrics, and tags to MLFlow if is_def is False"""
         if not self.is_dev:
@@ -174,12 +178,12 @@ class MLFlowLogger:
         """Save model in `./models` as `<model_type>_<label>_<time>`
         """
         if self.model:
-            logger.info(f"Saving model in {self.model_path}.")
             time_now = datetime.now().strftime('%Y-%m-%d_%H%M%S')
             model_type = self.params["model"]
             label = self.params["label"]
             path = self.model_path / f"{model_type}_{label}_{time_now}"
             save_model(sk_model=self.model, path=path)
+            logger.info(f"Saved model to {path}.")
 
 
 class Modeling:
@@ -220,7 +224,8 @@ class Modeling:
             X_train = constant_preprocessor(X_train)
         
         logger.info(f"Fit model")
-        self.estimator.fit(X_train, y_train) #ToDo save to mlflow logger
+        self.estimator.fit(X_train, y_train)
+        self.mlflow_logger.add_model(self.estimator)
 
         # store best parameters if model is GridSearch
         if isinstance(self.estimator, GridSearchCV):
