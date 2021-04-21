@@ -12,7 +12,7 @@ See [SETUP.md](SETUP.md).
 
 ### Setup - Notebooks
 The notebooks are pushed as `.py` files in the _python percentage script_ format (we like meaningful diffs).  
-These files have been created via the jupyter plugin [jupytext](https://github.com/mwouts/jupytext) which will automatically get installed if you execute `make setup` as part of the basic [setup](#setup).
+These files have been created via the jupyter plugin [jupytext](https://github.com/mwouts/jupytext) which will automatically get installed if you execute `make setup` as part of the basic setup above.
 To get the actual notebook experience open them via jupyter. But even without jupytext you can run them just like any python file via `python -m file_name.py`.
 
 ## Presentations
@@ -26,7 +26,7 @@ The presentations are found in `./presentations/`
 
 ## Modeling
 The models' code is found in  `./modeling/` in this repo.
-They are pushed as `.py` files. See [Setup - Modeling](#setup-modeling)
+They are pushed as `.py` files. See [Setup - Modeling](#setup---modeling)
 | Model | Description |
 |-|-|
 | | Zero Shot Classifier |
@@ -36,5 +36,5 @@ They are pushed as `.py` files. See [Setup - Modeling](#setup-modeling)
 
 ## Data analysis
 The notebooks are currently found in the main folder of this repo.
-They are pushed as `.py` files. See [Setup - Notebooks](#setup-notebooks).
+They are pushed as `.py` files. See [Setup - Notebooks](#setup---notebooks).
 
