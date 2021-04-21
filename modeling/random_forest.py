@@ -28,26 +28,21 @@ logging.basicConfig(format="%(asctime)s: %(message)s")
 logging.getLogger("pyhive").setLevel(logging.CRITICAL)  # avoid excessive logs
 logger.setLevel(logging.INFO)
 
-    
-
 
 if __name__ == "__main__":
     
     data = m.Posts()
 
-    trans_os = {None: [None], 'translate':[0.8,0.9,1.0], 'oversample':[0.8,0.9,1.0]} 
+    trans_os = {'translate':[0.9], 'oversample':[0.9]}
 
-    TARGET_LABELS = ['label_argumentsused', 'label_discriminating', 'label_inappropriate',
-        'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
-        'label_sentimentnegative', 'label_sentimentpositive',]
+    TARGET_LABELS = ['label_discriminating', 'label_inappropriate', 'label_offtopic',
+        'label_sentimentnegative', 'label_needsmoderation', 'label_negative']
 
-    embedding_dict_glove = transformers.load_embedding_vectors(embedding_style='glove')
-    embedding_dict_word2vec = transformers.load_embedding_vectors(embedding_style='word2vec')
+    embedding_dict_glove = transformers.load_embedding_vectors(embedding_style='glove', file="./embeddings/glove_vectors.txt")
+    embedding_dict_word2vec = transformers.load_embedding_vectors(embedding_style='word2vec', file="./embeddings/word2vec_vectors.txt")
     
     preps = {
             'norm': lambda x: cleaning.series_apply_chaining(x, [cleaning.normalize]),
-            'stem': lambda x: cleaning.series_apply_chaining(x, [cleaning.normalize, cleaning.stem_germ]), 
-            'lem':  lambda x: cleaning.series_apply_chaining(x, [cleaning.normalize, cleaning.lem_germ]), 
             'glove': transformers.MeanEmbeddingVectorizer(embedding_dict=embedding_dict_glove).transform,
             'word2vec': transformers.MeanEmbeddingVectorizer(embedding_dict=embedding_dict_word2vec).transform,
             }
@@ -59,11 +54,7 @@ if __name__ == "__main__":
                         ['glove', 'glove'],
                         ['word2vec', 'word2vec'],
                         ['norm', 'count'],
-                        ['stem', 'count'],
-                        ['lem' , 'count'],
                         ['norm', 'tfidf'],
-                        ['stem', 'tfidf'],
-                        ['lem' , 'tfidf'],
                     ]
     
     for method, strat in trans_os.items():
@@ -84,8 +75,8 @@ if __name__ == "__main__":
                             "vectorizer__stop_words" : [stopwords, None],
                             "vectorizer__min_df": [0.],
                             "vectorizer__max_df": [0.9],
-                            'clf__max_depth': [5, 10, 40],
-                            'clf__min_samples_leaf': [1, 5, 10],
+                            'clf__max_depth': [5, 10, 20],
+                            'clf__min_samples_leaf': [5, 10],
                         }
                         grid_search_params = param_grid.copy()
                         # MLFlow params have limited characters, therefore stopwords must not be given as list
@@ -97,19 +88,19 @@ if __name__ == "__main__":
                             ("clf", RandomForestClassifier(random_state=42)),
                             ])
                         param_grid = {
-                            'clf__max_depth': [5, 10, 40],
-                            'clf__min_samples_leaf': [1, 5, 10],
+                            'clf__max_depth': [5, 10, 20],
+                            'clf__min_samples_leaf': [5, 10],
                         }
                         grid_search_params = param_grid.copy()
                         mlflow_params["normalization"] = 'norm'
-                        mlflow_params["vectorizer"]    = c[0]
+                        mlflow_params["vectorizer"]    = c[1]
 
                     gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=5, verbose=1, n_jobs=-1)
 
                     mlflow_params["model"]=  "RandomForest"
                     mlflow_params["grid_search_params"]=  str(grid_search_params)[:249]
                     mlflow_tags = {
-                        "cycle2": True,
+                        "cycle3": True,
                     }
 
                     IS_DEVELOPMENT = False
