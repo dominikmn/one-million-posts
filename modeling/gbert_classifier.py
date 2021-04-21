@@ -166,17 +166,20 @@ def train_epoch(
         optimizer.step()
         scheduler.step()
         optimizer.zero_grad()
-        div = tp + 0.5 * ( fp + fn)
-        f1 = tp / div if div != 0 else 0
-        precision = tp / (tp+fp) if (tp+fp)!=0 else 0
-        recall = tp / (tp+fn) if (tp+fn)!=0 else 0
-        cm = {'TN':tn, 'FP':fp, 'FN':fn, 'TP':tp}
+
+        z = lambda x: float(x.data.cpu().numpy()[0])
+        eps=1E-5
+        f1 = tp / (tp + 0.5 * (fp + fn) + eps)
+        precision = tp / (tp + fp + eps) 
+        recall = tp / (tp + fn + eps)
+
+        cm = {'TN':z(tn), 'FP':z(fp), 'FN':z(fn), 'TP':z(tp)}
 
         split = 'train'
         name = f"{split}-bal"
-        mlflow_logger.add_metric(f"{name} - F1", f1)
-        mlflow_logger.add_metric(f"{name} - precision", precision)
-        mlflow_logger.add_metric(f"{name} - recall", recall)
+        mlflow_logger.add_metric(f"{name} - F1", z(f1))
+        mlflow_logger.add_metric(f"{name} - precision", z(precision))
+        mlflow_logger.add_metric(f"{name} - recall", z(recall))
         mlflow_logger.add_param(f"cm-{name}", cm)
     return f1, np.mean(losses)
 
@@ -208,17 +211,19 @@ def eval_model(model, data_loader, loss_fn, device, n_examples, mlflow_logger):
             fn += (targets * (1 - preds)).sum(dim=0).to(torch.float32)
             losses.append(loss.item())
 
-            div = tp + 0.5 * ( fp + fn)
-            f1 = tp / div if div != 0 else 0
-            precision = tp / (tp+fp) if (tp+fp)!=0 else 0
-            recall = tp / (tp+fn) if (tp+fn)!=0 else 0
-            cm = {'TN':tn, 'FP':fp, 'FN':fn, 'TP':tp}
+            z = lambda x: float(x.data.cpu().numpy()[0])
+            eps=1E-5
+            f1 = tp / (tp + 0.5 * (fp + fn) + eps)
+            precision = tp / (tp + fp + eps) 
+            recall = tp / (tp + fn + eps)
+
+            cm = {'TN':int(z(tn)), 'FP':int(z(fp)), 'FN':int(z(fn)), 'TP':int(z(tp))}
 
             split = 'val'
             name = f"{split}-bal"
-            mlflow_logger.add_metric(f"{name} - F1", f1)
-            mlflow_logger.add_metric(f"{name} - precision", precision)
-            mlflow_logger.add_metric(f"{name} - recall", recall)
+            mlflow_logger.add_metric(f"{name} - F1", z(f1))
+            mlflow_logger.add_metric(f"{name} - precision", z(precision))
+            mlflow_logger.add_metric(f"{name} - recall", z(recall))
             mlflow_logger.add_param(f"cm-{name}", cm)
     return f1, np.mean(losses) 
 
@@ -227,17 +232,23 @@ def eval_model(model, data_loader, loss_fn, device, n_examples, mlflow_logger):
 
 # %%
 def make_model(label, method, strategy):
-    BATCH_SIZE = 2
+    BATCH_SIZE = 8
     MAX_LEN = 264
     EPOCHS = 10
     LEARNING_RATE = 1e-5
 
+    param_dict = {
+                    'epochs': EPOCHS,
+                    'batch_size': BATCH_SIZE,
+                    'max_len': MAX_LEN,
+                }
     # ## MLflow setup
     mlflow_params=dict()
-    mlflow_params["normalization"] = 'norm'
+    mlflow_params["normalization"] = 'none'
     mlflow_params["vectorizer"] = 'deepset/gbert-base'
     mlflow_params["model"] = "deepset/gbert-base"
-    #mlflow_params["grid_search_params"] = str('')[:249]
+    mlflow_params["grid_search_params"] = str(param_dict)[:249]
+    mlflow_params["lr"] = LEARNING_RATE
     mlflow_tags = {
         "cycle3": True,
     }
@@ -254,10 +265,14 @@ def make_model(label, method, strategy):
     data = m.Posts()
     data.set_label(label=label)
     data.set_balance_method(balance_method=method, sampling_strategy=strategy)
+
     X_train, y_train = data.get_X_y('train')
     df_train = pd.concat([X_train,y_train], axis=1)
+    df_train.columns = ['text', label]
+
     X_val, y_val = data.get_X_y('val')
     df_val = pd.concat([X_val,y_val], axis=1)
+    df_val.columns = ['text', label]
 
     #df_train = loading.load_extended_posts(split='train', label=label)
     #df_train = feature_engineering.add_column_text(df_train)
@@ -278,6 +293,7 @@ def make_model(label, method, strategy):
     # ## Instantiation
     model = BinaryClassifier().to(device)
     optimizer = AdamW(model.parameters(), lr=LEARNING_RATE, correct_bias=False)
+    mlflow_logger.add_param('optimizer', 'AdamW')
     total_steps = len(train_data_loader) * EPOCHS
     scheduler = get_linear_schedule_with_warmup(
         optimizer,
@@ -299,7 +315,8 @@ def make_model(label, method, strategy):
             optimizer,
             device,
             scheduler,
-            len(df_train)
+            len(df_train),
+            mlflow_logger,
         )
         logger.info(f'Train loss {train_loss} F1 {train_f1}')
         val_f1, val_loss = eval_model(
@@ -307,7 +324,8 @@ def make_model(label, method, strategy):
             val_data_loader,
             loss_fn,
             device,
-            len(df_val)
+            len(df_val),
+            mlflow_logger,
         )
         logger.info(f'Val   loss {val_loss} F1 {val_f1}')
         print()
@@ -316,13 +334,14 @@ def make_model(label, method, strategy):
         history['val_f1'].append(val_f1)
         history['val_loss'].append(val_loss)
         if val_f1 > best_f1:
-            file_name = f"./models/model_gbert_pool_{label}_{t}.bin"
+            file_name = f"./models/model_gbertbase_{label}_{t}.bin"
             torch.save(model.state_dict(), file_name)
             best_f1 = val_f1
 
     #############################################
     #MLflow logging
 
+    mlflow_logger.add_param("saved_model", f"model_gbertbase_{label}_{t}")
     mlflow_logger.add_param("label", data.current_label)
     mlflow_logger.add_param("balance_method", data.balance_method)
     if data.balance_method:
@@ -336,13 +355,17 @@ def make_model(label, method, strategy):
 
 # %%
 if __name__ == "__main__":
-    #TARGET_LABELS = ['label_discriminating', 'label_inappropriate', 'label_offtopic',
-    #    'label_sentimentnegative', 'label_needsmoderation', 'label_negative']
-    TARGET_LABELS = ['label_negative']
+    TARGET_LABELS = ['label_discriminating', 'label_inappropriate', 'label_offtopic',
+        'label_sentimentnegative', 'label_needsmoderation', 'label_negative']
+    #TARGET_LABELS = ['label_negative']
     trans_os = {'translate':[0.9], 'oversample':[0.9]}
 
-    for method, strat in trans_os.items():
-        for strategy in strat:
-            for l in TARGET_LABELS:
-                make_model(l, method, strategy)
+    for label in TARGET_LABELS:
+        for method, strat in trans_os.items():
+            for strategy in strat:
+                logger.info('-' * 50)
+                logger.info(f'Label: {label}')
+                logger.info(f'Balance-method: {method}, Balance-strategy: {strategy}')
+                logger.info('-' * 50)
+                make_model(label, method, strategy)
     
