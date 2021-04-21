@@ -51,7 +51,7 @@ def get_oversampled_X_y(X, y, sampling_strategy):
         
 def get_augmented_val(df, label):
     '''get a dataset with augmented texts for the minority positive label
-    Arguments: X, y - pandas series containing the training data that needs to be augmented
+    Arguments: X, y - pandas series containing the validation data that needs to be augmented
                label - label that needs to be augmented
                sampling_strategy - float representing the proportion of positive vs negative labels in the augmented dataframe (range [>0.0; <=1.ß])
     Return: augmented X, y'''
@@ -66,7 +66,7 @@ def get_augmented_val(df, label):
 
 def get_augmented_val_X_y(X, y, label):
     '''get a dataset with augmented texts for the minority positive label
-    Arguments: X, y - pandas series containing the training data that needs to be augmented
+    Arguments: X, y - pandas series containing the validation data that needs to be augmented
                label - label that needs to be augmented
                sampling_strategy - float representing the proportion of positive vs negative labels in the augmented dataframe (range [>0.0; <=1.ß])
     Return: augmented X, y'''
