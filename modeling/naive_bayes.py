@@ -83,8 +83,8 @@ if __name__ == "__main__":
                         mlflow_params["vectorizer"]    = c[1]
                     else:
                         pipeline = Pipeline([
-                            ('scaler' : MinMaxScaler,
-                                "clf", MultinomialNB()),
+                            ('scaler', MinMaxScaler()),
+                                ("clf", MultinomialNB()),
                             ])
                         param_grid = {
                             "clf__alpha" : [1.0],
