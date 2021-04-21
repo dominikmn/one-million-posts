@@ -97,7 +97,7 @@ class Posts:
                 X, y = augmenting.get_augmented_X_y(X, y, label=self.current_label, sampling_strategy=self.sampling_strategy)
             elif self.balance_method == "oversample":
                 X, y = augmenting.get_oversampled_X_y(X, y, sampling_strategy=self.sampling_strategy)
-        elif split == "val" and balance_method == "translate":
+        elif split == "val" and balance_method == "translate": # balance method is set as "translate" Modeling.evaluate()
             X, y = augmenting.get_augmented_val_X_y(X, y, label=self.current_label)
         return X, y
 
