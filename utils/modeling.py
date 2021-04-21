@@ -47,7 +47,8 @@ class Posts:
     
     def __init__(self):
         df = loading.load_extended_posts()
-        self.df = feature_engineering.add_column_text(df)
+        df = feature_engineering.add_column_text(df)
+        self.df = feature_engineering.add_column_label_needsmoderation(df)
         self.current_label = None
         self.balance_method = None
         self.sampling_strategy = 1
