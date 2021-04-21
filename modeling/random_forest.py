@@ -39,7 +39,7 @@ if __name__ == "__main__":
         'label_sentimentnegative', 'label_needsmoderation', 'label_negative']
 
     embedding_dict_glove = transformers.load_embedding_vectors(embedding_style='glove', file="./embeddings/glove_vectors.txt")
-    embedding_dict_word2vec = transformers.load_embedding_vectors(embedding_style='word2vec', file="./embeddings/w2v_vectors.txt")
+    embedding_dict_word2vec = transformers.load_embedding_vectors(embedding_style='word2vec', file="./embeddings/word2vec_vectors.txt")
     
     preps = {
             'norm': lambda x: cleaning.series_apply_chaining(x, [cleaning.normalize]),
