@@ -2,6 +2,16 @@ import pandas as pd
 import numpy as np
 import mlflow
 from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
+from typing import Tuple, Dict
+import logging
+
+
+# set logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s: %(message)s")
+logging.getLogger("pyhive").setLevel(logging.CRITICAL)  # avoid excessive logs
+logger.setLevel(logging.INFO)
+
 
 category_map = {
                  'argumentation': 'label_argumentsused',
@@ -117,4 +127,30 @@ def log_cm (y_true_train, y_pred_train, y_true_val, y_pred_val):
     cm_val = {'TN':tn_val, 'FP':fp_val, 'FN':fn_val, 'TP':tp_val}
     mlflow.log_params({"cm-train": cm_tr, "cm-val": cm_val})
 
-        
+
+def compute_and_log_metrics(
+    y_true: pd.Series, y_pred: pd.Series, split: str="train"
+) -> Tuple[float, float, float, Dict]:
+    """Computes and logs metrics logger
+
+    Args:
+        y_true: The true target classification
+        y_pred: The predicted target classification
+        split: The split of the dataset ["test", "val", "train"]
+
+    Returns:
+        f1: The f1_score
+        precision: The precision_score
+        recall: The recall_score
+        cm: Dictionary with the confusion matrix
+    """
+    f1 = f1_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    cm = {'TN':tn, 'FP':fp, 'FN':fn, 'TP':tp}
+
+    logger.info(f"Performance on {split} set: F1 = {f1:.1f}, precision = {precision:.1%}, recall = {recall:.1%}")
+    logger.info(f"Confusion matrix: {cm}")
+    return f1, precision, recall, cm

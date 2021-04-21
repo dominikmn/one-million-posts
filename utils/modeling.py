@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Tuple, Dict
 
@@ -9,7 +10,7 @@ from sklearn.metrics import f1_score, recall_score, precision_score, confusion_m
 from sklearn.model_selection import GridSearchCV
 
 # one-million-post utils
-from utils import loading, feature_engineering, augmenting
+from utils import loading, feature_engineering, augmenting, scoring
 
 # mlflow
 import mlflow
@@ -24,33 +25,6 @@ logger.setLevel(logging.INFO)
 
 
 
-def compute_and_log_metrics(
-    y_true: pd.Series, y_pred: pd.Series, split: str="train"
-) -> Tuple[float, float, float]:
-    """Computes and logs metrics logger
-
-    Args:
-        y_true: The true target classification
-        y_pred: The predicted target classification
-        split: The split of the dataset ["test", "val", "train"]
-
-    Returns:
-        f1: The f1_score
-        precision: The precision_score
-        recall: The recall_score
-        cm: Dictionary with the confusion matrix
-    """
-    f1 = f1_score(y_true, y_pred)
-    precision = precision_score(y_true, y_pred)
-    recall = recall_score(y_true, y_pred)
-
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
-    cm = {'TN':tn, 'FP':fp, 'FN':fn, 'TP':tp}
-
-    logger.info(f"Performance on {split} set: F1 = {f1:.1f}, precision = {precision:.1%}, recall = {recall:.1%}")
-    logger.info(f"Confusion matrix: {cm}")
-    return f1, precision, recall, cm
-            
 
 def predict_with_threshold(y_pred_proba: np.array, threshold: float) -> np.array:
     return (y_pred_proba >= threshold).astype(int)
@@ -69,11 +43,12 @@ class Posts:
     """
     AVAILABLE_LABELS = ['label_argumentsused', 'label_discriminating', 'label_inappropriate',
                 'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
-                'label_sentimentnegative', 'label_sentimentpositive',]
+                'label_sentimentnegative', 'label_sentimentpositive', 'label_needsmoderation', 'label_negative']
     
     def __init__(self):
         df = loading.load_extended_posts()
-        self.df = feature_engineering.add_column_text(df)
+        df = feature_engineering.add_column_text(df)
+        self.df = feature_engineering.add_column_label_needsmoderation(df)
         self.current_label = None
         self.balance_method = None
         self.sampling_strategy = 1
@@ -122,6 +97,8 @@ class Posts:
                 X, y = augmenting.get_augmented_X_y(X, y, label=self.current_label, sampling_strategy=self.sampling_strategy)
             elif self.balance_method == "oversample":
                 X, y = augmenting.get_oversampled_X_y(X, y, sampling_strategy=self.sampling_strategy)
+        elif split == "val" and balance_method == "translate": # balance method is set as "translate" Modeling.evaluate()
+            X, y = augmenting.get_augmented_val_X_y(X, y, label=self.current_label)
         return X, y
 
     def set_label(self, label:str):
@@ -160,6 +137,9 @@ class MLFlowLogger:
     def add_metric(self, name:str, value):
         self.metrics[name] = value
 
+    def add_model(self, model):
+        self.model = model
+
     def log(self):
         """Log params, metrics, and tags to MLFlow if is_def is False"""
         if not self.is_dev:
@@ -172,12 +152,12 @@ class MLFlowLogger:
         """Save model in `./models` as `<model_type>_<label>_<time>`
         """
         if self.model:
-            logger.info(f"Saving model in {self.model_path}.")
             time_now = datetime.now().strftime('%Y-%m-%d_%H%M%S')
             model_type = self.params["model"]
             label = self.params["label"]
             path = self.model_path / f"{model_type}_{label}_{time_now}"
             save_model(sk_model=self.model, path=path)
+            logger.info(f"Saved model to {path}.")
 
 
 class Modeling:
@@ -197,26 +177,6 @@ class Modeling:
         self.model = None
         self.threshold = None
     
-    def calculate_best_threshold(self, y_true: pd.Series, y_pred_proba: np.array) -> float:
-        """Calculate the best threshold value for classification.
-
-        Args:
-            y_pred_proba: Predicted probabilities.
-            y_true: Series with true target labels.
-
-        Returns:
-            best_th: The threshold value that maximizes the f1-score.
-        """
-        best_th = 0.0
-        best_f1 = 0.0
-        for th in np.arange(0.05, 0.96, 0.05):
-            y_pred_temp = predict_with_threshold(y_pred_proba, th)
-            f1_temp = f1_score(y_true, y_pred_temp)
-            if f1_temp > best_f1:
-                best_th = th
-                best_f1 = f1_temp
-        return best_th
-
     def train(self, constant_preprocessor=None): #, mlflow_logger):
         """Trains the estimator.
 
@@ -238,13 +198,8 @@ class Modeling:
             X_train = constant_preprocessor(X_train)
         
         logger.info(f"Fit model")
-        self.estimator.fit(X_train, y_train) #ToDo save to mlflow logger
-
-        # select best threshold if model implements predict_proba
-        if self.fit_threshold and callable(getattr(self.estimator, "predict_proba", None)):
-            y_train_proba = self.estimator.predict_proba(X_train)[:, 1]
-            self.threshold = self.calculate_best_threshold(y_train, y_train_proba)
-            self.mlflow_logger.add_param("threshold", self.threshold)
+        self.estimator.fit(X_train, y_train)
+        self.mlflow_logger.add_model(self.estimator)
 
         # store best parameters if model is GridSearch
         if isinstance(self.estimator, GridSearchCV):
@@ -263,25 +218,38 @@ class Modeling:
 
         Args:
             splits: List of splits to evaluate. Default: ["train", "val"]
+            constant_preprocessor: Function to preprocess the data. Default: None
         """
         if self.model:
             for split in splits:
-                X, y = self.data.get_X_y(split=split)
-                if constant_preprocessor is not None:
-                    X = constant_preprocessor(X)
-
-                model = self.model
-
-                if self.threshold:
-                    y_pred = predict_with_threshold(model.predict_proba(X)[:, 1], self.threshold)
-                else:
-                    y_pred = model.predict(X)
-
-                f1, precision, recall, cm = compute_and_log_metrics(y, y_pred, split)
-                self.mlflow_logger.add_metric(f"{split} - F1", f1)
-                self.mlflow_logger.add_metric(f"{split} - precision", precision)
-                self.mlflow_logger.add_metric(f"{split} - recall", recall)
-                self.mlflow_logger.add_param(f"cm-{split}", cm)
+                self.__evaluate_and_log_to_mlflow(split=split, balance_method=None, constant_preprocessor=constant_preprocessor)
+                if split == "val":
+                    self.__evaluate_and_log_to_mlflow(split=split, balance_method="translate", constant_preprocessor=constant_preprocessor)
+                elif split == "train" and self.data.balance_method:
+                    self.__evaluate_and_log_to_mlflow(split=split, balance_method=self.data.balance_method, constant_preprocessor=constant_preprocessor)
         else:
             logger.info(f"No model available! Please run `train()` first.")
 
+    def __evaluate_and_log_to_mlflow(self, split, balance_method, constant_preprocessor):
+        """Helper function to evaluate a single split.
+
+        Args:
+            split: The split to evaluate.
+            balance_method: The balance_method to use.
+            constant_preprocessor: Function to preprocess the data.
+        """
+        X, y = self.data.get_X_y(split=split, balance_method=balance_method)
+        if constant_preprocessor is not None:
+            X = constant_preprocessor(X)
+
+        model = self.model
+
+        y_pred = model.predict(X)
+
+        name = f"{split}-bal" if balance_method else f"{split}"
+        logger.info(f"Evaluate: {name}")
+        f1, precision, recall, cm = scoring.compute_and_log_metrics(y, y_pred, split)
+        self.mlflow_logger.add_metric(f"{name} - F1", f1)
+        self.mlflow_logger.add_metric(f"{name} - precision", precision)
+        self.mlflow_logger.add_metric(f"{name} - recall", recall)
+        self.mlflow_logger.add_param(f"cm-{name}", cm)
