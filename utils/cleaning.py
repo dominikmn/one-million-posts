@@ -74,12 +74,29 @@ def series_apply_chaining(series, functions):
         series = series.apply(f)
     return series
 
-def normalize(txt, url_emoji_dummy=False):
-    """
+def normalize(txt:str, url_emoji_dummy:bool=False, pure_words:bool=True):
+    """Normalizes a string
+    
+    1. Applies .lower()
+    2. Replaces URLs by space (or 'URL')
+    3. Replaces emojis by space (or 'EMOJI')
+    4. Replaces punctuation by space
+    5. Removes leading, trailing, repeated spaces
 
+    Args:
+        txt: str object
+        url_emoji_dummy: 
+            If True urls and emojist will be replaced by 'URL' and 'EMOJI' respecitively.
+            If False, they will be replaced by a space character. 
+        pure_words: 
+            If True, it applies str.lower() on txt and applies .translate(...) to remove any punctuation. 
+            If False, it skips .lower() and only moves repeated punctuation.
 
+    Returns:
+        txt: str object in normalized format.
     """
-    txt = txt.lower()
+    if pure_words:
+        txt = txt.lower()
 
     url_dummy = ' '
     emoji_dummy = ' '
@@ -117,16 +134,29 @@ def normalize(txt, url_emoji_dummy=False):
     # "Eastern" emoticons like ^^ and o_O
     s += r"|"                    # or
     s += r"(?:\^\^)|"            # 'eastern' emoji
-    s += r"(?:[<(]?o_o[)>]?)"    # 'eastern' emoji. Has to be lower-case 'o' because of the preceeding .lower() further above
+    s += r"(?:[<(]?[oO]_[oO][)>]?)"    # 'eastern' emoji.
     s += r")"                    # end emoticon
     s += r"(?=\s|$)"             # white space or end required after
     emoticon_re = re.compile(s)
     txt = emoticon_re.sub(emoji_dummy, txt)  #replace with 'EMOTICON but keep preceeding and trailing space/linefeed
 
-    # replace punctuation by space
-    txt = txt.translate({ord(c): " " for c in punctuation})
+    if pure_words:
+        # replace punctuation by space
+        txt = txt.translate({ord(c): " " for c in punctuation})
+    else:
+        # remove repeated punctuation
+        last = None
+        output = []
+        for c in txt:
+            if c != last:
+                if c in punctuation:
+                    last = c
+                else:
+                    last = None
+                output.append(c)
+        txt = ''.join(output)
 
-    # remove leading, trailing and repeated whitespace
+    # remove leading, trailing and repeated space
     txt = txt.strip()
     txt = re.sub(r'\s+', ' ', txt)
 
