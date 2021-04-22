@@ -96,18 +96,14 @@ class OMPDataset(Dataset):
 
 
 # %%
-def create_data_loader(df, label, tokenizer, max_len, batch_size):
+def create_data_loader(df:pd.DataFrame, label:str, tokenizer:BertTokenizer, max_len:int, batch_size:int) -> DataLoader:
     ds = OMPDataset(
         text=df.text.to_numpy(),
         targets=df[label].to_numpy(),
         tokenizer=tokenizer,
         max_len=max_len
-    )
-    return DataLoader(
-        ds,
-        batch_size=batch_size,
-        num_workers=4
-    )
+        )
+    return DataLoader(ds, batch_size=batch_size, num_workers=4)
 
 
 # %%
@@ -125,42 +121,35 @@ class BinaryClassifier(nn.Module):
         ).values()
         output = self.dropout(pooled_output)
         output = self.out(output)
-        return torch.sigmoid(output)
+        return output
 
 # %%
-def train_epoch(
-  model,
-  data_loader,
-  loss_fn,
-  optimizer,
-  device,
-  scheduler,
-  n_examples,
-  mlflow_logger:m.MLFlowLogger
-):
+def train_epoch(model, data_loader, loss_fn, optimizer, device, scheduler,):
     model = model.train()
     losses = []
-    tp = 0
-    tn = 0
-    fp = 0
-    fn = 0
+    tp, tn, fp, fn = 0, 0, 0, 0
     for d in data_loader:
+        # **TODO** This code block is completely identical between eval_model and train_epoc
+        # START of code block
         input_ids = d["input_ids"].to(device)
         attention_mask = d["attention_mask"].to(device)
         targets = d["targets"].to(device)
-        outputs = model(
-          input_ids=input_ids,
-          attention_mask=attention_mask
-        )
-        preds = torch.round(outputs)
         targets = targets.unsqueeze(1)
         targets = targets.float()
+        outputs = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+            )
+        preds = torch.sigmoid(outputs)
+        preds = torch.round(preds)
         loss = loss_fn(outputs, targets)
+        losses.append(loss.item())
         tp += (targets * preds).sum(dim=0).to(torch.float32)
         tn += ((1 - targets) * (1 - preds)).sum(dim=0).to(torch.float32)
         fp += ((1 - targets) * preds).sum(dim=0).to(torch.float32)
         fn += (targets * (1 - preds)).sum(dim=0).to(torch.float32)
-        losses.append(loss.item())
+        # END of code block
+
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
@@ -168,19 +157,19 @@ def train_epoch(
         optimizer.zero_grad()
 
     split = 'train'
-    fbeta, metrics, params = give_scores(tp, tn, fp, fn, split)
+    fbeta, metrics, params = _give_scores(tp, tn, fp, fn, split)
+
     return fbeta, metrics, params, np.mean(losses)
 
 # %%
-def eval_model(model, data_loader, loss_fn, device, n_examples, mlflow_logger:m.MLFlowLogger):
+def eval_model(model, data_loader, loss_fn, device):
     model = model.eval()
     losses = []
-    tp = 0
-    tn = 0
-    fp = 0
-    fn = 0
+    tp, tn, fp, fn = 0, 0, 0, 0
     with torch.no_grad():
         for d in data_loader:
+            # **TODO** This code block is completely identical between eval_model and train_epoc
+            # START of code block
             input_ids = d["input_ids"].to(device)
             attention_mask = d["attention_mask"].to(device)
             targets = d["targets"].to(device)
@@ -190,26 +179,34 @@ def eval_model(model, data_loader, loss_fn, device, n_examples, mlflow_logger:m.
                 input_ids=input_ids,
                 attention_mask=attention_mask
                 )
-            preds = torch.round(outputs)
+            preds = torch.sigmoid(outputs)
+            preds = torch.round(preds)
             loss = loss_fn(outputs, targets)
+            losses.append(loss.item())
             tp += (targets * preds).sum(dim=0).to(torch.float32)
             tn += ((1 - targets) * (1 - preds)).sum(dim=0).to(torch.float32)
             fp += ((1 - targets) * preds).sum(dim=0).to(torch.float32)
             fn += (targets * (1 - preds)).sum(dim=0).to(torch.float32)
-            losses.append(loss.item())
+            # END of code block
 
     split = 'val'
-    fbeta, metrics, params = give_scores(tp, tn, fp, fn, split)
+    fbeta, metrics, params = _give_scores(tp, tn, fp, fn, split)
+
     return fbeta, metrics, params, np.mean(losses)
 
 # %%
-def give_scores(tp, tn, fp, fn, split):
+def _give_scores(tp, tn, fp, fn, split):
+    ''' Helper function to compute recall, precision, f1, fbeta from tensors.
+
+    '''
+    # Helper-function to retrieve float from tensor:
     z = lambda x: float(x.data.cpu().numpy()[0])
+
     eps=1E-5
 
     f1 = tp / (tp + 0.5 * (fp + fn) + eps)
     beta = 2.
-    fbeta = ((1. + beta**2) * tp) / ((1. + beta**2)*tp + (beta**2)*fn + fp + eps)
+    fbeta = ((1. + beta**2) * tp) / ((1. + beta**2) * tp + (beta**2) * fn + fp + eps)
     precision = tp / (tp + fp + eps)
     recall = tp / (tp + fn + eps)
     cm = {'TN':int(z(tn)), 'FP':int(z(fp)), 'FN':int(z(fn)), 'TP':int(z(tp))}
@@ -230,34 +227,17 @@ def give_scores(tp, tn, fp, fn, split):
 # ## Main method
 
 # %%
-def make_model(data:m.Posts, label:str):
+def make_model(data:m.Posts, label:str, learning_rate:float, positive_class_weight:float):
     BATCH_SIZE = 8
     MAX_LEN = 264
     EPOCHS = 10
-    LEARNING_RATE = 1e-5
 
-    param_dict = {
-                    'epochs': EPOCHS,
-                    'batch_size': BATCH_SIZE,
-                    'max_len': MAX_LEN,
-                }
-    # ## MLflow setup
-    mlflow_params=dict()
-    mlflow_params["normalization"] = 'norm'
-    mlflow_params["vectorizer"] = 'deepset/gbert-base'
-    mlflow_params["model"] = "deepset/gbert-base"
-    mlflow_params["grid_search_params"] = str(param_dict)[:249]
-    mlflow_params["lr"] = LEARNING_RATE
-    mlflow_tags = {
-        "cycle4": True,
-    }
+    # ## MLflow instantiation
     IS_DEVELOPMENT = False
     mlflow_logger = m.MLFlowLogger(
         uri=TRACKING_URI,
         experiment=EXPERIMENT_NAME,
         is_dev=IS_DEVELOPMENT,
-        params=mlflow_params,
-        tags=mlflow_tags
     )
 
     # ## Data loading
@@ -273,17 +253,6 @@ def make_model(data:m.Posts, label:str):
     df_val = pd.concat([X_val,y_val], axis=1)
     df_val.columns = ['text', label]
 
-    #df_train = loading.load_extended_posts(split='train', label=label)
-    #df_train = feature_engineering.add_column_text(df_train)
-    #X,y = augmenting.get_augmented_X_y(df_train.text,
-    #                                df_train[label],
-    #                                sampling_strategy=1,
-    #                                label='label_sentimentnegative',
-    #                                )
-    #df_train = pd.concat([X,y], axis=1)
-    #df_val = loading.load_extended_posts(split='val', label=label)
-    #df_val = feature_engineering.add_column_text(df_val)
-
     tokenizer = BertTokenizer.from_pretrained("deepset/gbert-base")
     train_data_loader = create_data_loader(df_train, label, tokenizer, MAX_LEN, BATCH_SIZE)
     val_data_loader = create_data_loader(df_val, label, tokenizer, MAX_LEN, BATCH_SIZE)
@@ -291,7 +260,7 @@ def make_model(data:m.Posts, label:str):
 
     # ## Instantiation
     model = BinaryClassifier().to(device)
-    optimizer = AdamW(model.parameters(), lr=LEARNING_RATE, correct_bias=False)
+    optimizer = AdamW(model.parameters(), lr=learning_rate, correct_bias=False)
     mlflow_logger.add_param('optimizer', 'AdamW')
     total_steps = len(train_data_loader) * EPOCHS
     scheduler = get_linear_schedule_with_warmup(
@@ -299,7 +268,12 @@ def make_model(data:m.Posts, label:str):
         num_warmup_steps=0,
         num_training_steps=total_steps,
         )
-    loss_fn = nn.BCELoss().to(device)
+    # https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html#torch.nn.BCEWithLogitsLoss
+    # From the BCEWithLogitLoss() documentation:
+    # > For example, if a dataset contains 100 positive and 300 negative examples of a single class, 
+    # > then pos_weight for the class should be equal to 300/100=3 . 
+    # > The loss would act as if the dataset contains 3*100=300 positive examples.
+    loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.FloatTensor([positive_class_weight])).to(device)
 
     history = defaultdict(list)
     best_fbeta = 0
@@ -314,8 +288,6 @@ def make_model(data:m.Posts, label:str):
             optimizer,
             device,
             scheduler,
-            len(df_train),
-            mlflow_logger,
         )
         logger.info(f'Train loss {train_loss} Fbeta {train_fbeta}')
         val_fbeta, val_metrics, val_params,  val_loss = eval_model(
@@ -323,8 +295,6 @@ def make_model(data:m.Posts, label:str):
             val_data_loader,
             loss_fn,
             device,
-            len(df_val),
-            mlflow_logger,
         )
         logger.info(f'Val   loss {val_loss} Fbeta {val_fbeta}')
         print()
@@ -348,6 +318,20 @@ def make_model(data:m.Posts, label:str):
     #############################################
     #MLflow logging
 
+    constant_params = {
+                    'epochs': EPOCHS,
+                    'batch_size': BATCH_SIZE,
+                    'max_len': MAX_LEN,
+                }
+    mlflow_logger.add_tag("cycle4", True)
+    mlflow_logger.add_param("normalization", 'norm')
+    mlflow_logger.add_param("vectorizer", 'deepset/gbert-base')
+    mlflow_logger.add_param("model", "deepset/gbert-base")
+    # I'm re-using the grid_search_params field in order to no open too many mlflow columns
+    mlflow_logger.add_param("grid_search_params", str(constant_params)[:249]) 
+    mlflow_logger.add_param("lr", learning_rate)
+    mlflow_logger.add_param('pos_weight', positive_class_weight)
+
     mlflow_logger.add_param("saved_model", f"model_gbertbase_{label}_{t}")
     mlflow_logger.add_param("label", data.current_label)
     mlflow_logger.add_param("balance_method", data.balance_method)
@@ -365,18 +349,23 @@ if __name__ == "__main__":
     TARGET_LABELS = ['label_discriminating', 'label_inappropriate',
         'label_sentimentnegative', 'label_needsmoderation']
     #TARGET_LABELS = ['label_needsmoderation']
-    trans_os = {'translate':[0.9], 'oversample':[0.9]}
+    TRANS_OS = {'translate':[0.9], 'oversample':[0.9]}
+    LEARNING_RATES = [1e-5, 5e-6, 25e-7, 125e-8]
+    POSITIVE_WEIGHTS = [2., 3.]
+    for positive_class_weight in POSITIVE_WEIGHTS:
+        for learning_rate in LEARNING_RATES:
+            for label in TARGET_LABELS:
+                for method, strat in TRANS_OS.items():
+                    for strategy in strat:
+                        data = m.Posts()
+                        data.set_label(label=label)
+                        data.set_balance_method(balance_method=method, sampling_strategy=strategy)
 
-    for label in TARGET_LABELS:
-        for method, strat in trans_os.items():
-            for strategy in strat:
-                data = m.Posts()
-                data.set_label(label=label)
-                data.set_balance_method(balance_method=method, sampling_strategy=strategy)
+                        logger.info('-' * 50)
+                        logger.info(f'positive_class_weight: {positive_class_weight}, learning-rate: {learning_rate}')
+                        logger.info(f'Label: {label}')
+                        logger.info(f'Balance-method: {method}, Balance-strategy: {strategy}')
+                        logger.info('-' * 50)
 
-                logger.info('-' * 50)
-                logger.info(f'Label: {label}')
-                logger.info(f'Balance-method: {method}, Balance-strategy: {strategy}')
-                logger.info('-' * 50)
-                make_model(data, label)
+                        make_model(data, label, learning_rate, positive_class_weight)
     
