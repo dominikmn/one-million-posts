@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import mlflow
-from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix, fbeta_score
 from typing import Tuple, Dict
 import logging
 
@@ -139,11 +139,13 @@ def compute_and_log_metrics(
         split: The split of the dataset ["test", "val", "train"]
 
     Returns:
+        f2: The f2_score
         f1: The f1_score
         precision: The precision_score
         recall: The recall_score
         cm: Dictionary with the confusion matrix
     """
+    f2 = fbeta_score(y_true, y_pred, beta=2)
     f1 = f1_score(y_true, y_pred)
     precision = precision_score(y_true, y_pred)
     recall = recall_score(y_true, y_pred)
@@ -151,6 +153,6 @@ def compute_and_log_metrics(
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
     cm = {'TN':tn, 'FP':fp, 'FN':fn, 'TP':tp}
 
-    logger.info(f"Performance on {split} set: F1 = {f1:.1f}, precision = {precision:.1%}, recall = {recall:.1%}")
+    logger.info(f"Performance on {split} set: F2 = {f2:1f} F1 = {f1:.1f}, precision = {precision:.1%}, recall = {recall:.1%}")
     logger.info(f"Confusion matrix: {cm}")
-    return f1, precision, recall, cm
+    return f2, f1, precision, recall, cm
