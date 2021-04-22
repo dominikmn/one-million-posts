@@ -38,8 +38,8 @@ if __name__ == "__main__":
 
     trans_os = {'translate':[0.9], 'oversample':[0.9]}
 
-    TARGET_LABELS = ['label_discriminating', 'label_inappropriate', 'label_offtopic',
-        'label_sentimentnegative', 'label_needsmoderation', 'label_negative']
+    TARGET_LABELS = ['label_discriminating', 'label_inappropriate',
+        'label_sentimentnegative',  'label_negative']
 
     embedding_dict_glove = transformers.load_embedding_vectors(embedding_style='glove', file="./embeddings/glove_vectors.txt")
     embedding_dict_word2vec = transformers.load_embedding_vectors(embedding_style='word2vec', file="./embeddings/word2vec_vectors.txt")
