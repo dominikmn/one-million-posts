@@ -37,7 +37,7 @@ from torch.utils.data import Dataset, DataLoader
 
 from datetime import datetime
 
-from utils import loading, feature_engineering, augmenting, scoring
+from utils import loading, feature_engineering, augmenting, scoring, cleaning
 from utils import modeling as m
 
 import mlflow
@@ -136,7 +136,7 @@ def train_epoch(
   device,
   scheduler,
   n_examples,
-  mlflow_logger
+  mlflow_logger:m.MLFlowLogger
 ):
     model = model.train()
     losses = []
@@ -185,7 +185,7 @@ def train_epoch(
 
 
 # %%
-def eval_model(model, data_loader, loss_fn, device, n_examples, mlflow_logger):
+def eval_model(model, data_loader, loss_fn, device, n_examples, mlflow_logger:m.MLFlowLogger):
     model = model.eval()
     losses = []
     tp = 0
@@ -231,7 +231,7 @@ def eval_model(model, data_loader, loss_fn, device, n_examples, mlflow_logger):
 # ## Main method
 
 # %%
-def make_model(label, method, strategy):
+def make_model(data:m.Posts, label:str):
     BATCH_SIZE = 8
     MAX_LEN = 264
     EPOCHS = 10
@@ -244,7 +244,7 @@ def make_model(label, method, strategy):
                 }
     # ## MLflow setup
     mlflow_params=dict()
-    mlflow_params["normalization"] = 'none'
+    mlflow_params["normalization"] = 'norm'
     mlflow_params["vectorizer"] = 'deepset/gbert-base'
     mlflow_params["model"] = "deepset/gbert-base"
     mlflow_params["grid_search_params"] = str(param_dict)[:249]
@@ -262,15 +262,15 @@ def make_model(label, method, strategy):
     )
 
     # ## Data loading
-    data = m.Posts()
-    data.set_label(label=label)
-    data.set_balance_method(balance_method=method, sampling_strategy=strategy)
+    normalize = lambda x: cleaning.normalize(x, url_emoji_dummy=False, pure_words=False)
 
     X_train, y_train = data.get_X_y('train')
+    X_train = X_train.apply(normalize)
     df_train = pd.concat([X_train,y_train], axis=1)
     df_train.columns = ['text', label]
 
     X_val, y_val = data.get_X_y('val')
+    X_val = X_val.apply(normalize)
     df_val = pd.concat([X_val,y_val], axis=1)
     df_val.columns = ['text', label]
 
@@ -348,7 +348,7 @@ def make_model(label, method, strategy):
         mlflow_logger.add_param("sampling_strategy", data.sampling_strategy)
     mlflow_logger.add_model(None)
 
-    with mlflow.start_run(run_name='deepset/gbert-base') as run:
+    with mlflow.start_run(run_name='deepset/gbert-base + input normalization') as run:
         mlflow_logger.log()
 
 
@@ -363,9 +363,13 @@ if __name__ == "__main__":
     for label in TARGET_LABELS:
         for method, strat in trans_os.items():
             for strategy in strat:
+                data = m.Posts()
+                data.set_label(label=label)
+                data.set_balance_method(balance_method=method, sampling_strategy=strategy)
+
                 logger.info('-' * 50)
                 logger.info(f'Label: {label}')
                 logger.info(f'Balance-method: {method}, Balance-strategy: {strategy}')
                 logger.info('-' * 50)
-                make_model(label, method, strategy)
+                make_model(data, label)
     
