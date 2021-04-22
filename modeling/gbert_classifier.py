@@ -212,7 +212,7 @@ def give_scores(tp, tn, fp, fn, split):
     fbeta = ((1. + beta**2) * tp) / ((1. + beta**2)*tp + (beta**2)*fn + fp + eps)
     precision = tp / (tp + fp + eps)
     recall = tp / (tp + fn + eps)
-    cm = {'TN':z(tn), 'FP':z(fp), 'FN':z(fn), 'TP':z(tp)}
+    cm = {'TN':int(z(tn)), 'FP':int(z(fp)), 'FN':int(z(fn)), 'TP':int(z(tp))}
     
     name = f"{split}-bal"
     metrics = dict()
@@ -364,7 +364,7 @@ def make_model(data:m.Posts, label:str):
 if __name__ == "__main__":
     TARGET_LABELS = ['label_discriminating', 'label_inappropriate',
         'label_sentimentnegative', 'label_needsmoderation']
-    #TARGET_LABELS = ['label_negative']
+    #TARGET_LABELS = ['label_needsmoderation']
     trans_os = {'translate':[0.9], 'oversample':[0.9]}
 
     for label in TARGET_LABELS:
