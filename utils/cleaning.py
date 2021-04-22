@@ -80,17 +80,17 @@ def normalize(txt:str, url_emoji_dummy:bool=False, pure_words:bool=True):
     1. Applies .lower()
     2. Replaces URLs by space (or 'URL')
     3. Replaces emojis by space (or 'EMOJI')
-    4. Replaces punctuation by space
+    4. Replaces any punctuation by space (or removes repeated punctuation)
     5. Removes leading, trailing, repeated spaces
 
     Args:
-        txt: str object
-        url_emoji_dummy: 
+        txt: str 
+        url_emoji_dummy: bool
             If True urls and emojist will be replaced by 'URL' and 'EMOJI' respecitively.
             If False, they will be replaced by a space character. 
-        pure_words: 
-            If True, it applies str.lower() on txt and applies .translate(...) to remove any punctuation. 
-            If False, it skips .lower() and only moves repeated punctuation.
+        pure_words: bool
+            If True, str.lower() and .translate(...) are applied on txt to make the string lower case and remove any punctuation respectively. 
+            If False, .lower() is skipped. Puncuation is still removed but only repeated occurences.
 
     Returns:
         txt: str object in normalized format.
