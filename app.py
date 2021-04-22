@@ -115,7 +115,8 @@ def update_prediction(n_clicks, input_value):
         response = requests.post('http://127.0.0.1:8000/predict', json=new_measurement)
         if response.ok:
             result = response.json()
-            return [f"Sentiment negative: {result['prediction']} (Probability: {result['probability']})"]
+            mapping = {0: "No", 1: "Yes"}
+            return [f"Needs moderation: {mapping[result['needsmoderation']]}"]
     return [f"Uuups, something went wrong. Did you enter a text?"]
 
 
