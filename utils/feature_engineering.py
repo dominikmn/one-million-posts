@@ -142,20 +142,14 @@ def add_column_text(df: pd.DataFrame) -> pd.DataFrame:
     return df_text
 
 
-def label_needsmoderation(df):
-    '''helper function to add label_needsmoderation for a single row of df'''
-    labels = ["label_sentimentnegative", "label_discriminating", "label_inappropriate", "label_offtopic"]
-    df_out = df.copy()
-    df_out["label_needsmoderation"] = df_out[labels].any(axis=1)
-    df_out.loc[df_out[labels].isna().any(axis=1), "label_needsmoderation"] = np.NaN
-    return df_out
+
     
-def label_negative(df):
+def label_needsmoderation(df):
     '''helper function to add label_needsmoderation for a single row of df'''
     labels = ["label_sentimentnegative", "label_discriminating", "label_inappropriate"]
     df_out = df.copy()
-    df_out["label_negative"] = df_out[labels].any(axis=1)
-    df_out.loc[df_out[labels].isna().any(axis=1), "label_negative"] = np.NaN
+    df_out["label_needsmoderation"] = df_out[labels].any(axis=1)
+    df_out.loc[df_out[labels].isna().any(axis=1), "label_needsmoderation"] = np.NaN
     return df_out
 
 def add_column_label_needsmoderation(df):
@@ -170,5 +164,4 @@ def add_column_label_needsmoderation(df):
         df: A copy of df, extended by `label_needsmoderation`.
     """
     df = label_needsmoderation(df)
-    df = label_negative(df)
     return df
