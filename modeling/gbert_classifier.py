@@ -167,22 +167,9 @@ def train_epoch(
         scheduler.step()
         optimizer.zero_grad()
 
-        z = lambda x: float(x.data.cpu().numpy()[0])
-        eps=1E-5
-        f1 = tp / (tp + 0.5 * (fp + fn) + eps)
-        precision = tp / (tp + fp + eps) 
-        recall = tp / (tp + fn + eps)
-
-        cm = {'TN':z(tn), 'FP':z(fp), 'FN':z(fn), 'TP':z(tp)}
-
-        split = 'train'
-        name = f"{split}-bal"
-        mlflow_logger.add_metric(f"{name} - F1", z(f1))
-        mlflow_logger.add_metric(f"{name} - precision", z(precision))
-        mlflow_logger.add_metric(f"{name} - recall", z(recall))
-        mlflow_logger.add_param(f"cm-{name}", cm)
-    return f1, np.mean(losses)
-
+    split = 'train'
+    fbeta, metrics, params = give_scores(tp, tn, fp, fn, split)
+    return fbeta, metrics, params, np.mean(losses)
 
 # %%
 def eval_model(model, data_loader, loss_fn, device, n_examples, mlflow_logger:m.MLFlowLogger):
@@ -211,21 +198,33 @@ def eval_model(model, data_loader, loss_fn, device, n_examples, mlflow_logger:m.
             fn += (targets * (1 - preds)).sum(dim=0).to(torch.float32)
             losses.append(loss.item())
 
-            z = lambda x: float(x.data.cpu().numpy()[0])
-            eps=1E-5
-            f1 = tp / (tp + 0.5 * (fp + fn) + eps)
-            precision = tp / (tp + fp + eps) 
-            recall = tp / (tp + fn + eps)
+    split = 'val'
+    fbeta, metrics, params = give_scores(tp, tn, fp, fn, split)
+    return fbeta, metrics, params, np.mean(losses)
 
-            cm = {'TN':int(z(tn)), 'FP':int(z(fp)), 'FN':int(z(fn)), 'TP':int(z(tp))}
+# %%
+def give_scores(tp, tn, fp, fn, split):
+    z = lambda x: float(x.data.cpu().numpy()[0])
+    eps=1E-5
 
-            split = 'val'
-            name = f"{split}-bal"
-            mlflow_logger.add_metric(f"{name} - F1", z(f1))
-            mlflow_logger.add_metric(f"{name} - precision", z(precision))
-            mlflow_logger.add_metric(f"{name} - recall", z(recall))
-            mlflow_logger.add_param(f"cm-{name}", cm)
-    return f1, np.mean(losses) 
+    f1 = tp / (tp + 0.5 * (fp + fn) + eps)
+    beta = 2.
+    fbeta = ((1. + beta**2) * tp) / ((1. + beta**2)*tp + (beta**2)*fn + fp + eps)
+    precision = tp / (tp + fp + eps)
+    recall = tp / (tp + fn + eps)
+    cm = {'TN':z(tn), 'FP':z(fp), 'FN':z(fn), 'TP':z(tp)}
+    
+    name = f"{split}-bal"
+    metrics = dict()
+    metrics[f"{name} - F1"] = z(f1)
+    metrics[f"{name} - F2"] = z(fbeta)
+    metrics[f"{name} - precision"] =  z(precision)
+    metrics[f"{name} - recall"] = z(recall)
+    
+    params = dict()
+    params[f"cm-{name}"] =  cm
+    
+    return fbeta,metrics,params
 
 # %% [markdown]
 # ## Main method
@@ -250,7 +249,7 @@ def make_model(data:m.Posts, label:str):
     mlflow_params["grid_search_params"] = str(param_dict)[:249]
     mlflow_params["lr"] = LEARNING_RATE
     mlflow_tags = {
-        "cycle3": True,
+        "cycle4": True,
     }
     IS_DEVELOPMENT = False
     mlflow_logger = m.MLFlowLogger(
@@ -269,7 +268,7 @@ def make_model(data:m.Posts, label:str):
     df_train = pd.concat([X_train,y_train], axis=1)
     df_train.columns = ['text', label]
 
-    X_val, y_val = data.get_X_y('val')
+    X_val, y_val = data.get_X_y('val', balance_method='translate')
     X_val = X_val.apply(normalize)
     df_val = pd.concat([X_val,y_val], axis=1)
     df_val.columns = ['text', label]
@@ -303,12 +302,12 @@ def make_model(data:m.Posts, label:str):
     loss_fn = nn.BCELoss().to(device)
 
     history = defaultdict(list)
-    best_f1 = 0
+    best_fbeta = 0
     t = datetime.now().strftime("%y%m%d_%H%M")
     for epoch in range(EPOCHS):
         logger.info(f'Epoch {epoch + 1}/{EPOCHS}')
         logger.info('-' * 10)
-        train_f1, train_loss = train_epoch(
+        train_fbeta, train_metrics, train_params, train_loss = train_epoch(
             model,
             train_data_loader,
             loss_fn,
@@ -318,8 +317,8 @@ def make_model(data:m.Posts, label:str):
             len(df_train),
             mlflow_logger,
         )
-        logger.info(f'Train loss {train_loss} F1 {train_f1}')
-        val_f1, val_loss = eval_model(
+        logger.info(f'Train loss {train_loss} Fbeta {train_fbeta}')
+        val_fbeta, val_metrics, val_params,  val_loss = eval_model(
             model,
             val_data_loader,
             loss_fn,
@@ -327,16 +326,24 @@ def make_model(data:m.Posts, label:str):
             len(df_val),
             mlflow_logger,
         )
-        logger.info(f'Val   loss {val_loss} F1 {val_f1}')
+        logger.info(f'Val   loss {val_loss} Fbeta {val_fbeta}')
         print()
-        history['train_f1'].append(train_f1)
+        history['train_fbeta'].append(train_fbeta)
         history['train_loss'].append(train_loss)
-        history['val_f1'].append(val_f1)
+        history['val_fbeta'].append(val_fbeta)
         history['val_loss'].append(val_loss)
-        if val_f1 > best_f1:
+        if val_fbeta > best_fbeta:
             file_name = f"./models/model_gbertbase_{label}_{t}.bin"
             torch.save(model.state_dict(), file_name)
-            best_f1 = val_f1
+            for k,v in val_metrics.items():
+                mlflow_logger.add_metric(k, v)
+            for k,v in val_params.items():
+                mlflow_logger.add_param(k, v)
+            for k,v in train_metrics.items():
+                mlflow_logger.add_metric(k, v)
+            for k,v in train_params.items():
+                mlflow_logger.add_param(k, v)
+            best_fbeta = val_fbeta
 
     #############################################
     #MLflow logging
@@ -348,15 +355,15 @@ def make_model(data:m.Posts, label:str):
         mlflow_logger.add_param("sampling_strategy", data.sampling_strategy)
     mlflow_logger.add_model(None)
 
-    with mlflow.start_run(run_name='deepset/gbert-base + input normalization') as run:
+    with mlflow.start_run(run_name='deepset/gbert-base') as run:
         mlflow_logger.log()
 
 
 
 # %%
 if __name__ == "__main__":
-    TARGET_LABELS = ['label_discriminating', 'label_inappropriate', 'label_offtopic',
-        'label_sentimentnegative', 'label_needsmoderation', 'label_negative']
+    TARGET_LABELS = ['label_discriminating', 'label_inappropriate',
+        'label_sentimentnegative', 'label_needsmoderation']
     #TARGET_LABELS = ['label_negative']
     trans_os = {'translate':[0.9], 'oversample':[0.9]}
 
