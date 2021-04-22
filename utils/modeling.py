@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Tuple, Dict
 
 # evaluation imports
-from sklearn.metrics import f1_score, recall_score, precision_score, confusion_matrix
+from sklearn.metrics import f1_score, recall_score, precision_score, confusion_matrix, fbeta_score
 from sklearn.model_selection import GridSearchCV
 
 # one-million-post utils
@@ -248,7 +248,8 @@ class Modeling:
 
         name = f"{split}-bal" if balance_method else f"{split}"
         logger.info(f"Evaluate: {name}")
-        f1, precision, recall, cm = scoring.compute_and_log_metrics(y, y_pred, split)
+        f2, f1, precision, recall, cm = scoring.compute_and_log_metrics(y, y_pred, split)
+        self.mlflow_logger.add_metric(f"{name} - F2", f2)
         self.mlflow_logger.add_metric(f"{name} - F1", f1)
         self.mlflow_logger.add_metric(f"{name} - precision", precision)
         self.mlflow_logger.add_metric(f"{name} - recall", recall)
