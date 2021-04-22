@@ -12,6 +12,7 @@ from xgboost import XGBClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import fbeta_score, make_scorer
 
 from utils import modeling as m
 from utils import cleaning, transformers
@@ -32,6 +33,8 @@ logger.setLevel(logging.INFO)
 if __name__ == "__main__":
     
     data = m.Posts()
+    
+    scorer = make_scorer(fbeta_score, beta=2)
 
     trans_os = {'translate':[0.9], 'oversample':[0.9]}
 
@@ -92,12 +95,12 @@ if __name__ == "__main__":
                         mlflow_params["normalization"] = 'norm'
                         mlflow_params["vectorizer"]    = c[1]
 
-                    gs = GridSearchCV(pipeline, param_grid, scoring="f1", cv=5, verbose=1, n_jobs=-1)
+                    gs = GridSearchCV(pipeline, param_grid, scoring=scorer, cv=5, verbose=1, n_jobs=-1)
 
                     mlflow_params["model"]=  "XGBoost"
                     mlflow_params["grid_search_params"]=  str(grid_search_params)[:249]
                     mlflow_tags = {
-                        "cycle3": True,
+                        "cycle4": True,
                     }
 
                     IS_DEVELOPMENT = False
@@ -118,7 +121,7 @@ if __name__ == "__main__":
                     training.train(constant_preprocessor=constant_preprocessor)
                     training.evaluate(["train", "val"],constant_preprocessor=constant_preprocessor)
                     #if True:
-                    with mlflow.start_run(run_name='xgb_with_full_params') as run:
+                    with mlflow.start_run(run_name='xgb_with_beta') as run:
                         mlflow_logger.log()
 
 
