@@ -115,8 +115,8 @@ def update_prediction(n_clicks, input_value):
         response = requests.post('http://127.0.0.1:8000/predict', json=new_measurement)
         if response.ok:
             result = response.json()
-            mapping = {0: "No", 1: "Yes"}
-            return [f"Needs moderation: {mapping[result['needsmoderation']]}"]
+            mapping = {0: "does not need", 1: "needs"}
+            return [f"This post {mapping[result['needsmoderation']]} moderation. NegSent {result['sentimentnegative']}. Inapp {result['inappropriate']}. Disc {result['discriminating']}."]
     return [f"Uuups, something went wrong. Did you enter a text?"]
 
 
