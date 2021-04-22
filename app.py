@@ -1,8 +1,9 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import pandas as pd
+import requests
 
 from utils import loading
 
@@ -82,8 +83,10 @@ app.layout = html.Div(
                                 style={"width": "100%", "height": 100},
                             ),
                         ),
+                        html.Button(id='submit-state', n_clicks=0, children='Predict'),
                         html.Br(),
                         html.Div(id="post-output", style={'whiteSpace': 'pre-line'}),
+                        html.Div(id="post-prediction", style={'whiteSpace': 'pre-line'}),
                     ],
                 ),
             ],
@@ -92,12 +95,29 @@ app.layout = html.Div(
     ]
 )
 
+
 @app.callback(
     [Output(component_id="post-output", component_property="children")],
     [Input(component_id="post-input", component_property="value")],
 )
 def update_output_div(input_value):
     return ["Output: {}".format(input_value)]
+
+
+@app.callback(
+    [Output(component_id="post-prediction", component_property="children")],
+    [Input(component_id="submit-state", component_property="n_clicks")],
+    [State(component_id="post-input", component_property="value")]
+)
+def update_prediction(n_clicks, input_value):
+    if input_value:
+        new_measurement = {"text": input_value}
+        response = requests.post('http://127.0.0.1:8000/predict', json=new_measurement)
+        if response.ok:
+            result = response.json()
+            return [f"Sentiment negative: {result['prediction']} (Probability: {result['probability']})"]
+    return [f"Uuups, something went wrong. Did you enter a text?"]
+
 
 if __name__ == "__main__":
     app.run_server(debug=True)
