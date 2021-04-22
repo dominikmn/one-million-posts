@@ -13,7 +13,7 @@ def series_apply_chaining(series, functions):
         series = series.apply(f)
     return series
 
-def normalize(txt:str, url_emoji_dummy:bool=False, pure_words:bool=True):
+def normalize(txt:str, url_emoji_dummy:bool=False, pure_words:bool=True) -> str:
     """Normalizes a string
     
     1. Applies .lower()
