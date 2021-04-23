@@ -15,6 +15,6 @@ tensorflow==2.4.1
 ipywidgets==7.6.3
 spacy-iwnlp==0.0.2
 imbalanced-learn==0.8.0
-lightgbm
-xgboost
-
+lightgbm==3.2.1
+xgboost==1.4.1
+torch==1.8.1

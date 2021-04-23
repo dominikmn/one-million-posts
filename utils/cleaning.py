@@ -1,20 +1,5 @@
-import pandas as pd
 from string import punctuation
 import re
-
-import nltk
-nltk.download('stopwords')
-from nltk.corpus import stopwords
-stopwords=stopwords.words('german')
-nltk.download('punkt')
-from nltk.stem.snowball import SnowballStemmer
-import spacy
-from spacy_iwnlp import spaCyIWNLP
-nlp=spacy.load('de')
-iwnlp=spaCyIWNLP(lemmatizer_path='data/IWNLP.Lemmatizer_20181001.json')
-nlp.add_pipe(iwnlp)
-stemmer = SnowballStemmer('german')
-
 
 def strip_punct(series):
     '''Strip puncation of series of strings
@@ -23,58 +8,34 @@ def strip_punct(series):
     new_series = series.str.replace(r'[^\w\s]+', '', regex=True)
     return new_series
 
+def series_apply_chaining(series, functions):
+    for f in functions:
+        series = series.apply(f)
+    return series
 
-def strip_stopwords(series, stopwords=stopwords):
-    '''Strip stopwords of series of strings
-    Arguments: series - a series containing strings, stopwords - a list of stopwords (default: german)
-    Return: new-series - a series of strings without stopwords'''
-    series=series.copy()
-    new_series = series.apply(lambda x: " ".join([word.lower() for word in x.split() if word.lower() not in (stopwords)]) if x is not None else x)
-    return new_series
-
-
-def stem_germ(x):
-    '''stemms german texts
-    Arguments: x - a string containing german text
-    Return : stemmed - the stemmed german text'''
-    tok = nltk.word_tokenize(normalize(x))
-    stemmed = " ".join([stemmer.stem(word) for word in tok])
+def normalize(txt:str, url_emoji_dummy:bool=False, pure_words:bool=True) -> str:
+    """Normalizes a string
     
-    return stemmed
+    1. Applies .lower()
+    2. Replaces URLs by space (or 'URL')
+    3. Replaces emojis by space (or 'EMOJI')
+    4. Replaces any punctuation by space (or removes repeated punctuation)
+    5. Removes leading, trailing, repeated spaces
 
-def lem_germ(x):
-    '''lemmatizes german texts
-    Arguments: x - a string containing german text
-    Return : lemmed - the lemmatized german text'''
-    tok = nlp(normalize(x))
-    lemmed=""
-    for word in tok:
-        try:
-            lemmed+=" " + word._.iwnlp_lemmas[0]
-        except:
-            lemmed+=" " + str(word)
-    return lemmed
+    Args:
+        txt: str 
+        url_emoji_dummy: bool
+            If True urls and emojist will be replaced by 'URL' and 'EMOJI' respecitively.
+            If False, they will be replaced by a space character. 
+        pure_words: bool
+            If True, str.lower() and .translate(...) are applied on txt to make the string lower case and remove any punctuation respectively. 
+            If False, .lower() is skipped. Puncuation is still removed but only repeated occurences.
 
-def lem_stem(series, lem_stem):
-    '''stemms or lemmatizes (or both) a series of german texts.
-    Arguments: series - a pandas series containing german texts.
-                lem_stem - option wether to stem (="stem") to lemmatize (="lem") or to lemmatize then stem (="lem_stem")
-    Return: new series - a stemmed or lemmatized (or both) series'''
-    
-    if lem_stem == 'stem':
-        new_series = series.apply(stem_germ)
-    elif lem_stem == 'lem':
-        new_series = series.apply(lem_germ)
-    elif lem_stem == 'lem_stem':
-        new_series = series.apply(lem_germ).apply(stem_germ)
-    return new_series
-
-def normalize(txt, url_emoji_dummy=False):
+    Returns:
+        txt: str object in normalized format.
     """
-
-
-    """
-    txt = txt.lower()
+    if pure_words:
+        txt = txt.lower()
 
     url_dummy = ' '
     emoji_dummy = ' '
@@ -112,16 +73,29 @@ def normalize(txt, url_emoji_dummy=False):
     # "Eastern" emoticons like ^^ and o_O
     s += r"|"                    # or
     s += r"(?:\^\^)|"            # 'eastern' emoji
-    s += r"(?:[<(]?o_o[)>]?)"    # 'eastern' emoji. Has to be lower-case 'o' because of the preceeding .lower() further above
+    s += r"(?:[<(]?[oO]_[oO][)>]?)"    # 'eastern' emoji.
     s += r")"                    # end emoticon
     s += r"(?=\s|$)"             # white space or end required after
     emoticon_re = re.compile(s)
     txt = emoticon_re.sub(emoji_dummy, txt)  #replace with 'EMOTICON but keep preceeding and trailing space/linefeed
 
-    # replace punctuation by space
-    txt = txt.translate({ord(c): " " for c in punctuation})
+    if pure_words:
+        # replace punctuation by space
+        txt = txt.translate({ord(c): " " for c in punctuation})
+    else:
+        # remove repeated punctuation
+        last = None
+        output = []
+        for c in txt:
+            if c != last:
+                if c in punctuation:
+                    last = c
+                else:
+                    last = None
+                output.append(c)
+        txt = ''.join(output)
 
-    # remove leading, trailing and repeated whitespace
+    # remove leading, trailing and repeated space
     txt = txt.strip()
     txt = re.sub(r'\s+', ' ', txt)
 
