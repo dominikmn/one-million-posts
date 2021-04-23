@@ -338,7 +338,7 @@ def make_model(data:m.Posts, label:str, learning_rate:float, positive_class_weig
     mlflow_logger.add_param("normalization", 'norm')
     mlflow_logger.add_param("vectorizer", 'deepset/gbert-base')
     mlflow_logger.add_param("model", "deepset/gbert-base")
-    # I'm re-using the grid_search_params field in order to no open too many mlflow columns
+    # I'm re-using the grid_search_params field in order to not open too many mlflow columns
     mlflow_logger.add_param("grid_search_params", str(constant_params)[:249]) 
     mlflow_logger.add_param("lr", learning_rate)
     mlflow_logger.add_param('pos_weight', positive_class_weight)
@@ -464,7 +464,7 @@ def load_model_and_evaluate(state_dict: str, data: m.Posts, label:str, positive_
     mlflow_logger.add_param("normalization", 'norm')
     mlflow_logger.add_param("vectorizer", 'deepset/gbert-base')
     mlflow_logger.add_param("model", "deepset/gbert-base")
-    # I'm re-using the grid_search_params field in order to no open too many mlflow columns
+    # I'm re-using the grid_search_params field in order to not open too many mlflow columns
     #mlflow_logger.add_param("grid_search_params", str(constant_params)[:249]) 
     #mlflow_logger.add_param("lr", learning_rate)
     mlflow_logger.add_param('pos_weight', positive_class_weight)
@@ -482,8 +482,7 @@ def load_model_and_evaluate(state_dict: str, data: m.Posts, label:str, positive_
 
 
 # %%
-#if __name__ == "__main__":
-if False:
+def grid_search_main():
     TARGET_LABELS = ['label_discriminating', 'label_inappropriate',
         'label_sentimentnegative', 'label_needsmoderation']
     #TARGET_LABELS = ['label_needsmoderation']
@@ -498,26 +497,27 @@ if False:
                         data = m.Posts()
                         data.set_label(label=label)
                         data.set_balance_method(balance_method=method, sampling_strategy=strategy)
-
                         logger.info('-' * 50)
                         logger.info(f'positive_class_weight: {positive_class_weight}, learning-rate: {learning_rate}')
                         logger.info(f'Label: {label}')
                         logger.info(f'Balance-method: {method}, Balance-strategy: {strategy}')
                         logger.info('-' * 50)
-
                         make_model(data, label, learning_rate, positive_class_weight)
 
-if __name__ == "__main__":
+def evaluate_main():
     positive_class_weight = 2.0
     label = 'label_needsmoderation'
-
     logger.info(f'Label: {label}')
     data = m.Posts()
     data.set_label(label=label)
     data.set_balance_method(balance_method='translate', sampling_strategy=0.9)
-
     state_dict = 'model_gbertbase_label_needsmoderation_210423_014254'
     logger.info(f"Loading model from state_dict ./models/{state_dict}.bin")
     load_model_and_evaluate(state_dict,data, label, 2.0)
+
+# %%
+if __name__ == "__main__":
+    #grid_search_main()
+    evaluate_main()
 
     
