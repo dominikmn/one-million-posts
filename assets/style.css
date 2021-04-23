@@ -1,12 +1,12 @@
 body {
-    font-family: "Lato", sans-serif;
+    /* font-family: "Lato", sans-serif; */
     margin: 0;
     background-color: #F7F7F7;
 }
 
 .header {
     background-color: #636363; /* #222222; #EC008E; */
-    height: 220px;
+    height: 180px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -30,9 +30,10 @@ body {
 
 .header-description {
     color: #FFFFFF; /* #CFCFCF; */
+    font-size: 18px;
     margin: 4px auto;
     text-align: center;
-    max-width: 384px;
+    max-width: 684px;
 }
 
 .wrapper {
@@ -49,3 +50,12 @@ body {
     box-shadow: 0 4px 6px 0 rgba(0, 0, 0, 0.18);
 }
 
+.footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: #d3d3d3;
+    color: black;
+    text-align: center;
+  }
