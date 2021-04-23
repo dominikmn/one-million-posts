@@ -163,8 +163,9 @@ def update_prediction_chart(long_df):
     colors[long_df.prediction.idxmax()] = COLORS[1][1]
     fig = px.bar(long_df, x="category", y="prediction", template="none")
     fig = go.Figure(data=[go.Bar(
-        x=long_df["category"],
-        y=long_df["prediction"],
+        x=long_df["prediction"],
+        y=long_df["category"],
+        orientation="h",
         marker_color=colors,
     )])
     fig.layout.template = "none"
