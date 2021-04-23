@@ -4,6 +4,10 @@ import dash_html_components as html
 from dash.dependencies import Input, Output, State
 import pandas as pd
 import requests
+from typing import Dict
+
+import plotly.express as px
+import plotly.graph_objects as go
 
 from utils import loading
 
@@ -87,6 +91,12 @@ app.layout = html.Div(
                         html.Br(),
                         html.Div(id="post-output", style={'whiteSpace': 'pre-line'}),
                         html.Div(id="post-prediction", style={'whiteSpace': 'pre-line'}),
+                        html.Div(
+                            children = dcc.Graph(
+                                id="prediction-chart", config={"displayModeBar": False},
+                            ),
+                            className="card",
+                        ),
                     ],
                 ),
             ],
@@ -105,7 +115,10 @@ def update_output_div(input_value):
 
 
 @app.callback(
-    [Output(component_id="post-prediction", component_property="children")],
+    [
+        Output(component_id="post-prediction", component_property="children"),
+        Output(component_id="prediction-chart", component_property="figure"),
+    ],
     [Input(component_id="submit-state", component_property="n_clicks")],
     [State(component_id="post-input", component_property="value")]
 )
@@ -116,9 +129,22 @@ def update_prediction(n_clicks, input_value):
         if response.ok:
             result = response.json()
             mapping = {0: "does not need", 1: "needs"}
-            return [f"This post {mapping[result['needsmoderation']]} moderation. NegSent {result['sentimentnegative']}. Inapp {result['inappropriate']}. Disc {result['discriminating']}."]
-    return [f"Uuups, something went wrong. Did you enter a text?"]
+            predictions = result.copy()
+            df = get_df_from_predictions(predictions)
+            return [f"This post {mapping[result['needsmoderation']]} moderation. NegSent {result['sentimentnegative']}. Inapp {result['inappropriate']}. Disc {result['discriminating']}."], update_prediction_chart(df)
+    predictions = {'needsmoderation': 0.0, 'sentimentnegative': 0.0, 'inappropriate': 0.0, 'discriminating': 0.0}
+    df = get_df_from_predictions(predictions)
+    return [f"Uuups, something went wrong. Did you enter a text?"], update_prediction_chart(df)
 
+
+def get_df_from_predictions(predictions: Dict):
+    data = [(category, prediction) for category, prediction in predictions.items()]
+    return pd.DataFrame.from_records(data, columns=["category", "prediction"])
+
+
+def update_prediction_chart(long_df):
+    fig = px.bar(long_df, x="category", y="prediction")
+    return fig
 
 if __name__ == "__main__":
     app.run_server(debug=True)
