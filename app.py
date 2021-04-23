@@ -10,6 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from utils import loading
+COLORS =[[0, '#d3d3d3'],[1, '#ec008e']]
 
 #data = loading.load_extended_posts()
 #data_plot = data.groupby("id_article")["id_post"].count().reset_index()
@@ -95,6 +96,8 @@ app.layout = html.Div(
                             children = dcc.Graph(
                                 id="prediction-chart", config={"displayModeBar": False},
                             ),
+                            id="display-prediction-chart",
+                            style={"visibility": "hidden"},
                             className="card",
                         ),
                     ],
@@ -117,6 +120,7 @@ def update_output_div(input_value):
 @app.callback(
     [
         Output(component_id="post-prediction", component_property="children"),
+        Output(component_id="display-prediction-chart", component_property="style"),
         Output(component_id="prediction-chart", component_property="figure"),
     ],
     [Input(component_id="submit-state", component_property="n_clicks")],
@@ -129,13 +133,25 @@ def update_prediction(n_clicks, input_value):
         if response.ok:
             result = response.json()
             mapping = {0: "does not need", 1: "needs"}
+            style_prediction_chart = {
+                0: {"visibility": "hidden"},
+                1: {"visibility": "visible"},
+            }
             predictions = result.copy()
+            predictions.pop("needsmoderation")
             df = get_df_from_predictions(predictions)
-            return [f"This post {mapping[result['needsmoderation']]} moderation. NegSent {result['sentimentnegative']}. Inapp {result['inappropriate']}. Disc {result['discriminating']}."], update_prediction_chart(df)
-    predictions = {'needsmoderation': 0.0, 'sentimentnegative': 0.0, 'inappropriate': 0.0, 'discriminating': 0.0}
+            return (
+                [f"This post {mapping[result['needsmoderation']]} moderation. NegSent {result['sentimentnegative']}. Inapp {result['inappropriate']}. Disc {result['discriminating']}."],
+                style_prediction_chart[result["needsmoderation"]],
+                update_prediction_chart(df),
+            )
+    predictions = {'sentimentnegative': 0.0, 'inappropriate': 0.0, 'discriminating': 0.0}
     df = get_df_from_predictions(predictions)
-    return [f"Uuups, something went wrong. Did you enter a text?"], update_prediction_chart(df)
-
+    return (
+        [f"Uuups, something went wrong. Did you enter a text?"],
+        {"visibility": "hidden"},
+        update_prediction_chart(df),
+    )
 
 def get_df_from_predictions(predictions: Dict):
     data = [(category, prediction) for category, prediction in predictions.items()]
@@ -143,8 +159,16 @@ def get_df_from_predictions(predictions: Dict):
 
 
 def update_prediction_chart(long_df):
-    fig = px.bar(long_df, x="category", y="prediction")
+    colors = [COLORS[0][1]]*4
+    colors[long_df.prediction.idxmax()] = COLORS[1][1]
+    fig = px.bar(long_df, x="category", y="prediction", template="none")
+    fig = go.Figure(data=[go.Bar(
+        x=long_df["category"],
+        y=long_df["prediction"],
+        marker_color=colors,
+    )])
+    fig.layout.template = "none"
     return fig
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=True, use_reloader=True)
