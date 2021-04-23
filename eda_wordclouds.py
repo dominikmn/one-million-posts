@@ -14,7 +14,7 @@
 # ---
 
 # %%
-from utils import loading, cleaning, visualizing, feature_engineering
+from utils import loading, cleaning, visualizing, feature_engineering, nlp
 import pandas as pd
 from nltk.corpus import stopwords
 stopwords=stopwords.words('german')
@@ -28,6 +28,7 @@ df = loading.load_extended_posts()
 
 # %%
 df = feature_engineering.add_column_ann_round(df)
+df = feature_engineering.add_column_label_needsmoderation(df)
 
 
 # %% [markdown]
@@ -39,7 +40,7 @@ def top_words_label(df, label, text, stop=False, stopwords=None, plot=True, retu
     df_clean=df.dropna(subset=[label])
     df_clean.loc[:,text]=cleaning.strip_punct(df_clean[text])
     if stop:
-        df_clean.loc[:,text]=cleaning.strip_stopwords(df_clean[text], stopwords=stopwords)
+        df_clean.loc[:,text]=nlp.strip_stopwords(df_clean[text], stopwords=stopwords)
     df_pos = df_clean[df_clean[label]==1]
     df_neg = df_clean[df_clean[label]==0]
     topwords_pos = feature_engineering.calculate_top_words(df_pos[text], relative=True)
@@ -372,5 +373,11 @@ top_words_label(df.query('ann_round==2'), 'label_possiblyfeedback', 'body', True
 
 # %%
 top_words_label(df, 'label_possiblyfeedback', 'body', True, stopwords, True, False, False)
+
+# %% [markdown] tags=[]
+# #### Needs moderation
+
+# %%
+top_words_label(df.query('ann_round==2'), 'label_needsmoderation', 'body', True, stopwords, True, False, False)
 
 # %%
