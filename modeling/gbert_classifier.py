@@ -277,7 +277,7 @@ def make_model(data:m.Posts, label:str, learning_rate:float, positive_class_weig
 
     history = defaultdict(list)
     best_fbeta = 0
-    t = datetime.now().strftime("%y%m%d_%H%M")
+    t = datetime.now().strftime("%y%m%d_%H%M%S")
     for epoch in range(EPOCHS):
         logger.info(f'Epoch {epoch + 1}/{EPOCHS}')
         logger.info('-' * 10)
