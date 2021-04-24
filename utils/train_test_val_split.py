@@ -39,5 +39,17 @@ def create_splits():
     print('Splits created.')
 
 
+def create_unlabeled_subset(n_samples=10000):
+    RSEED=42
+    df_posts = loading.load_extended_posts()
+    df_posts = feature_engineering.add_column_ann_round(df_posts)
+
+    df_unlabeled = df_posts.query("ann_round not in [2, 3]")
+    df_subset = df_unlabeled.sample(n=n_samples, random_state=RSEED)
+    df_subset.id_post.to_csv("./data/unlabeled.csv", header=False)
+    print("Unlabeled subset created.")
+
+
 if __name__ == '__main__':
     create_splits()
+    create_unlabeled_subset()

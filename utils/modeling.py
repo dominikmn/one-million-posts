@@ -43,7 +43,7 @@ class Posts:
     """
     AVAILABLE_LABELS = ['label_argumentsused', 'label_discriminating', 'label_inappropriate',
                 'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
-                'label_sentimentnegative', 'label_sentimentpositive', 'label_needsmoderation', 'label_negative']
+                'label_sentimentnegative', 'label_sentimentpositive', 'label_needsmoderation']
     
     def __init__(self):
         df = loading.load_extended_posts()
@@ -52,8 +52,9 @@ class Posts:
         self.current_label = None
         self.balance_method = None
         self.sampling_strategy = 1
+        self.semi_supervised = False
 
-    def get_X_y(self, split:str=None, label:str=None, balance_method:str=None, sampling_strategy:float=None) -> Tuple[pd.Series, pd.Series]:
+    def get_X_y(self, split:str=None, label:str=None, balance_method:str=None, sampling_strategy:float=None, semi_supervised=False) -> Tuple[pd.Series, pd.Series]:
         """Get the features and target variable.
 
         label, balance_method, and sampling_strategy overwrite the attributes of Post if given.
@@ -65,21 +66,33 @@ class Posts:
             balance_method: The balancing method. One of ['translate', 'oversample']
             sampling_strategy: The desired ratio of the number of samples in the minority class
                 over the number of samples in the majority class after resampling/augmenting.
+            semi_supervised: Yes to retrieve X and y for semisupervised learning. Unlabeled samples have target -1. Default: False
 
         Returns:
             X: The feature (text column) of the posts
             y: The target annotations
         """
+        if semi_supervised:
+            self.semi_supervised = semi_supervised
         if split:
             filter_frame = pd.read_csv(f'./data/ann2_{split}.csv', header=None, index_col=0, names=['id_post'])
+            if self.semi_supervised:
+                df_unlabeled = pd.read_csv(f'./data/unlabeled.csv', header=None, index_col=0, names=['id_post'])
+                filter_frame = pd.concat(filter_frame, df_unlabeled, axis=0)
             df = self.df.merge(filter_frame, how='inner', on='id_post')
         else:
             df = self.df.copy()
 
         if label:
             self.current_label = label
+
         try:
-            df = df.dropna(subset=[self.current_label])
+            if self.semi_supervised:
+                fill_value = [-1]*len(self.AVAILABLE_LABELS)
+                fill_mapping = {k: v for k, v in zip(self.AVAILABLE_LABELS, fill_value)}
+                df = df.fillna(fill_mapping)
+            else:
+                df = df.dropna(subset=[self.current_label])
         except KeyError as e:
             message = f"Please set a label (Post.set_label). Available labels: {self.AVAILABLE_LABELS}"
             logger.error(message)
@@ -112,6 +125,9 @@ class Posts:
     def set_balance_method(self, balance_method, sampling_strategy):
         self.balance_method = balance_method
         self.sampling_strategy = sampling_strategy
+
+    def set_semi_supervised(self, state:bool):
+        self.semi_supervised = state
 
 
 class MLFlowLogger:
