@@ -5,15 +5,18 @@ import pickle
 import numpy as np
 import pandas as pd
 
-MODELNAME = "NaiveBayes_label_sentimentnegative_2021-04-08_200950"
-MODELNAME_NEEDSMODERATION = "SupportVectorMachine_label_negative_2021-04-22_070830"
-MODELNAME_INAPPROPRIATE = ""
-MODELNAME_DISCRIMINATING = ""
-MODELNAME_SENTIMENTNEGATIVE = "RandomForest_label_sentimentnegative_2021-04-21_185343"
-PATH = Path("models")
+from utils import gbert_models
 
-model_needsmoderation = pickle.load(open(PATH / MODELNAME_NEEDSMODERATION / 'model.pkl', 'rb'))
-model_sentimentnegative = pickle.load(open(PATH / MODELNAME_SENTIMENTNEGATIVE / 'model.pkl', 'rb'))
+MODELNAME = "NaiveBayes_label_sentimentnegative_2021-04-08_200950"
+MODELNAME_NEEDSMODERATION = "models/model_gbertbase_label_needsmoderation_210423_014254.bin"
+MODELNAME_INAPPROPRIATE = "models/model_gbertbase_label_inappropriate_210423_030629.bin"
+MODELNAME_DISCRIMINATING = "models/model_gbertbase_label_discriminating_210423_025622.bin"
+MODELNAME_SENTIMENTNEGATIVE = "models/model_gbertbase_label_sentimentnegative_210423_021224.bin"
+
+model_needsmoderation = gbert_models.get_model(MODELNAME_NEEDSMODERATION)
+model_inappropriate = gbert_models.get_model(MODELNAME_INAPPROPRIATE)
+model_discriminating = gbert_models.get_model(MODELNAME_DISCRIMINATING)
+model_sentimentnegative = gbert_models.get_model(MODELNAME_SENTIMENTNEGATIVE)
 
 app = FastAPI()
 
@@ -22,21 +25,30 @@ class Post(BaseModel):
 
 
 def predict_needsmoderation(text):
-    prediction = model_needsmoderation.predict(text)
+    prediction = gbert_models.get_prediction([text], model_needsmoderation)
     return prediction[0]
 
 
-def predict_sentiment_negative(text):
-    prediction = model_sentimentnegative.predict_proba(text)
-    return prediction[0][1]
+def predict_inappropriate(text):
+    prediction = gbert_models.get_prediction([text], model_inappropriate)
+    return prediction[0]
+
+def predict_discriminating(text):
+    prediction = gbert_models.get_prediction([text], model_discriminating)
+    return prediction[0]
+
+def predict_sentimentnegative(text):
+    prediction = gbert_models.get_prediction([text], model_sentimentnegative)
+    return prediction[0]
 
 
 @app.post('/predict')
 async def predict_post(post: Post):
-    data = post.dict()
-    data_in = pd.Series(data['text'])
-    needs_moderation = predict_needsmoderation(data_in)
+    text = post.dict()["text"]
+    needs_moderation = predict_needsmoderation(text)
     response = {'needsmoderation': needs_moderation, 'sentimentnegative': 0.0, 'inappropriate': 0.0, 'discriminating': 0.0}
     if needs_moderation:
-        response["sentimentnegative"] = predict_sentiment_negative(data_in)
+        response["sentimentnegative"] = predict_sentimentnegative(text)
+        response["inappropriate"] = predict_inappropriate(text)
+        response["discriminating"] = predict_discriminating(text)
     return response

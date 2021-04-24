@@ -4,4 +4,6 @@ uvicorn
 numpy
 pandas
 sklearn
+transformers
+torch
 

@@ -92,7 +92,8 @@ def update_prediction(n_clicks, input_value):
         response = requests.post('http://127.0.0.1:8000/predict', json=new_measurement)
         if response.ok:
             result = response.json()
-            mapping = {0: "Everything's fine", 1: "Needs moderation"}
+            mapping_needsmoderation = {0: "Everything's fine", 1: "Needs moderation"}
+            needs_moderation = int(result['needsmoderation'] > 0.5)
             style_prediction = {
                 0: {"color": "black"},
                 1: {"color": COLOR_PINK},
@@ -105,9 +106,9 @@ def update_prediction(n_clicks, input_value):
             predictions.pop("needsmoderation")
             df = get_df_from_predictions(predictions)
             return (
-                [f"{mapping[result['needsmoderation']]}"],
-                style_prediction[result["needsmoderation"]],
-                style_prediction_chart[result["needsmoderation"]],
+                [f"{mapping_needsmoderation[needs_moderation]}"],
+                style_prediction[needs_moderation],
+                style_prediction_chart[needs_moderation],
                 update_prediction_chart(df),
             )
     predictions = {'sentimentnegative': 0.0, 'inappropriate': 0.0, 'discriminating': 0.0}
