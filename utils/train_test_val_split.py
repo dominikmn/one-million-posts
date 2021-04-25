@@ -30,14 +30,30 @@ def create_splits():
 
     df_train = pd.concat([ann2_train, df_ann3_feedback_stories], axis=0)
 
-    print(f"Number of posts in train-set: {df_train.shape[0]}")
-    print(f"Number of posts in val-set: {ann2_val.shape[0]}")
-    print(f"Number of posts in test-set: {ann2_test.shape[0]}")
-    df_train.id_post.to_csv('./data/ann2_train.csv', header=False)
-    ann2_test.id_post.to_csv('./data/ann2_test.csv', header=False)
-    ann2_val.id_post.to_csv('./data/ann2_val.csv', header=False)
-    print('Splits created.')
+    label_subset = ['label_sentimentnegative', 'label_inappropriate', 'label_discriminating']
+    articles_israelpalestine = {9767, 10820, 11105}
+    articles_refugees = {1860, 11004, 10425, 10707}
+    articles_women = {1172, 1704, 1831}
+    ann3_all = df_posts.query("ann_round == 3").dropna(subset=label_subset)
+    ann3_israelpalestine = df_posts.query("ann_round == 3 and id_article in @articles_israelpalestine").dropna(subset=label_subset)
+    ann3_refugees = df_posts.query("ann_round == 3 and id_article in @articles_refugees").dropna(subset=label_subset)
+    ann3_women = df_posts.query("ann_round == 3 and id_article in @articles_women").dropna(subset=label_subset)
 
+    print(f"Number of posts in train set: {df_train.shape[0]}")
+    print(f"Number of posts in val set: {ann2_val.shape[0]}")
+    print(f"Number of posts in test set: {ann2_test.shape[0]}")
+    print(f"Number of posts in ann3_all set: {ann3_all.shape[0]}")
+    print(f"Number of posts in ann3_israelpalestine set: {ann3_israelpalestine.shape[0]}")
+    print(f"Number of posts in ann3_refugees set: {ann3_refugees.shape[0]}")
+    print(f"Number of posts in ann3_women set: {ann3_women.shape[0]}")
+    df_train.id_post.to_csv('./data/ann2_train.csv', header=False)
+    ann2_val.id_post.to_csv('./data/ann2_val.csv', header=False)
+    ann2_test.id_post.to_csv('./data/ann2_test.csv', header=False)
+    ann3_all.id_post.to_csv('./data/ann3_all.csv', header=False)
+    ann3_israelpalestine.id_post.to_csv('./data/ann3_israelpalestine.csv', header=False)
+    ann3_refugees.id_post.to_csv('./data/ann3_refugees.csv', header=False)
+    ann3_women.id_post.to_csv('./data/ann3_women.csv', header=False)
+    print('Splits created.')
 
 if __name__ == '__main__':
     create_splits()

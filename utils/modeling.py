@@ -43,7 +43,7 @@ class Posts:
     """
     AVAILABLE_LABELS = ['label_argumentsused', 'label_discriminating', 'label_inappropriate',
                 'label_offtopic', 'label_personalstories', 'label_possiblyfeedback',
-                'label_sentimentnegative', 'label_sentimentpositive', 'label_needsmoderation', 'label_negative']
+                'label_sentimentnegative', 'label_sentimentpositive', 'label_needsmoderation']
     
     def __init__(self):
         df = loading.load_extended_posts()
@@ -70,8 +70,11 @@ class Posts:
             X: The feature (text column) of the posts
             y: The target annotations
         """
-        if split:
+        if split in ['train', 'test', 'val']:
             filter_frame = pd.read_csv(f'./data/ann2_{split}.csv', header=None, index_col=0, names=['id_post'])
+            df = self.df.merge(filter_frame, how='inner', on='id_post')
+        elif split in ['ann3_all', 'ann3_israelpalestine', 'ann3_refugees', 'ann3_women']:
+            filter_frame = pd.read_csv(f'./data/{split}.csv', header=None, index_col=0, names=['id_post'])
             df = self.df.merge(filter_frame, how='inner', on='id_post')
         else:
             df = self.df.copy()
