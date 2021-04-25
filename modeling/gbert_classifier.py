@@ -212,10 +212,12 @@ def _give_scores(tp, tn, fp, fn, split):
     recall = tp / (tp + fn + eps)
     cm = {'TN':int(z(tn)), 'FP':int(z(fp)), 'FN':int(z(fn)), 'TP':int(z(tp))}
     
-    if split in ['train', 'val']:
-        name = f"{split}-bal"
-    else:
-        name = f"{split}"
+    name = f"{split}"
+    #**TODO** temporary disabled
+    #if split in ['train', 'val']:
+    #    name = f"{split}-bal"
+    #else:
+    #    name = f"{split}"
     metrics = dict()
     metrics[f"{name} - F1"] = z(f1)
     metrics[f"{name} - F2"] = z(fbeta)
@@ -355,7 +357,7 @@ def make_model(data:m.Posts, label:str, learning_rate:float, positive_class_weig
 
 
 # %%
-def load_model_and_evaluate(state_dict: str, data: m.Posts, label:str, positive_class_weight:float):
+def load_model_and_evaluate(state_dict: str, data: m.Posts, label:str, positive_class_weight:float, run_tag: str):
     BATCH_SIZE = 8
     MAX_LEN = 264
     #EPOCHS = 10
@@ -368,32 +370,8 @@ def load_model_and_evaluate(state_dict: str, data: m.Posts, label:str, positive_
         is_dev=IS_DEVELOPMENT,
     )
 
-    # ## Data loading
-    normalize = lambda x: cleaning.normalize(x, url_emoji_dummy=False, pure_words=False)
-
-    X_train, y_train = data.get_X_y('train')
-    X_train = X_train.apply(normalize)
-    df_train = pd.concat([X_train,y_train], axis=1)
-    df_train.columns = ['text', label]
-
-    X_val, y_val = data.get_X_y('val', balance_method='translate')
-    X_val = X_val.apply(normalize)
-    df_val = pd.concat([X_val,y_val], axis=1)
-    df_val.columns = ['text', label]
-
-    X_test, y_test = data.get_X_y('test', balance_method=None)
-    X_test = X_test.apply(normalize)
-    df_test = pd.concat([X_test,y_test], axis=1)
-    df_test.columns = ['text', label]
-
-    tokenizer = BertTokenizer.from_pretrained("deepset/gbert-base")
-    train_data_loader = create_data_loader(df_train, label, tokenizer, MAX_LEN, BATCH_SIZE)
-    val_data_loader = create_data_loader(df_val, label, tokenizer, MAX_LEN, BATCH_SIZE)
-    test_data_loader = create_data_loader(df_test, label, tokenizer, MAX_LEN, BATCH_SIZE)
-
     # ## Instantiation
     model = BinaryClassifier().to(device)
-    #optimizer = AdamW(model.parameters(), lr=learning_rate, correct_bias=False)
     mlflow_logger.add_param('optimizer', 'AdamW')
     # https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html#torch.nn.BCEWithLogitsLoss
     # From the BCEWithLogitLoss() documentation:
@@ -401,72 +379,48 @@ def load_model_and_evaluate(state_dict: str, data: m.Posts, label:str, positive_
     # > then pos_weight for the class should be equal to 300/100=3 . 
     # > The loss would act as if the dataset contains 3*100=300 positive examples.
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.FloatTensor([positive_class_weight])).to(device)
+    tokenizer = BertTokenizer.from_pretrained("deepset/gbert-base")
 
     # Loading the model
     model.load_state_dict(torch.load(f"./models/{state_dict}.bin"))
     model.eval()
 
+    # ## Data loading
+    normalize = lambda x: cleaning.normalize(x, url_emoji_dummy=False, pure_words=False)
 
-    #history = defaultdict(list)
-    train_fbeta, train_metrics, train_params,  train_loss = eval_model(
-        model,
-        train_data_loader,
-        loss_fn,
-        device,
-        'train',
-    )
-    logger.info(f'Train loss {train_loss} Fbeta {train_fbeta}')
-    val_fbeta, val_metrics, val_params,  val_loss = eval_model(
-        model,
-        val_data_loader,
-        loss_fn,
-        device,
-        'val',
-    )
-    logger.info(f'Val   loss {val_loss} Fbeta {val_fbeta}')
-    test_fbeta, test_metrics, test_params,  test_loss = eval_model(
-        model,
-        test_data_loader,
-        loss_fn,
-        device,
-        'test',
-    )
-    logger.info(f'Test  loss {test_loss} Fbeta {test_fbeta}')
+    SPLITS = ['train', 'val', 'test', 'ann3_all', 'ann3_israelpalestine', 'ann3_refugees', 'ann3_women']
+    for split in SPLITS:
+        X, y = data.get_X_y(split=split, balance_method=None)
+        X = X.apply(normalize)
+        df = pd.concat([X,y], axis=1)
+        df.columns = ['text', label]
+
+        data_loader = create_data_loader(df, label, tokenizer, MAX_LEN, BATCH_SIZE)
+
+        fbeta, metrics, params,  loss = eval_model(
+            model,
+            data_loader,
+            loss_fn,
+            device,
+            split,
+        )
+
+        logger.info(f'{split} loss {loss} Fbeta {fbeta}')
+
+        for k,v in metrics.items():
+            mlflow_logger.add_metric(k, v)
+        for k,v in params.items():
+            mlflow_logger.add_param(k, v)
+
     print()
-    #history['train_fbeta'].append(train_fbeta)
-    #history['train_loss'].append(train_loss)
-    #history['val_fbeta'].append(val_fbeta)
-    #history['val_loss'].append(val_loss)
-    for k,v in train_metrics.items():
-        mlflow_logger.add_metric(k, v)
-    for k,v in train_params.items():
-        mlflow_logger.add_param(k, v)
-
-    for k,v in val_metrics.items():
-        mlflow_logger.add_metric(k, v)
-    for k,v in val_params.items():
-        mlflow_logger.add_param(k, v)
-
-    for k,v in test_metrics.items():
-        mlflow_logger.add_metric(k, v)
-    for k,v in test_params.items():
-        mlflow_logger.add_param(k, v)
 
     #############################################
     #MLflow logging
 
-    #constant_params = {
-    #                'epochs': EPOCHS,
-    #                'batch_size': BATCH_SIZE,
-    #                'max_len': MAX_LEN,
-    #            }
     mlflow_logger.add_tag("cycle4", True)
     mlflow_logger.add_param("normalization", 'norm')
     mlflow_logger.add_param("vectorizer", 'deepset/gbert-base')
     mlflow_logger.add_param("model", "deepset/gbert-base")
-    # I'm re-using the grid_search_params field in order to not open too many mlflow columns
-    #mlflow_logger.add_param("grid_search_params", str(constant_params)[:249]) 
-    #mlflow_logger.add_param("lr", learning_rate)
     mlflow_logger.add_param('pos_weight', positive_class_weight)
 
     mlflow_logger.add_param("saved_model", state_dict)
@@ -476,7 +430,7 @@ def load_model_and_evaluate(state_dict: str, data: m.Posts, label:str, positive_
         mlflow_logger.add_param("sampling_strategy", data.sampling_strategy)
     mlflow_logger.add_model(None)
 
-    with mlflow.start_run(run_name='deepset/gbert-base') as run:
+    with mlflow.start_run(run_name=f'deepset/gbert-base_{label}_{run_tag}') as run:
         mlflow_logger.log()
 
 
@@ -505,15 +459,22 @@ def grid_search_main():
                         make_model(data, label, learning_rate, positive_class_weight)
 
 def evaluate_main():
-    positive_class_weight = 2.0
-    label = 'label_needsmoderation'
-    logger.info(f'Label: {label}')
+    state_list = {}
+    state_list['model_gbertbase_label_needsmoderation_210423_014254']   = {'run_tag': 'best', 'label': 'label_needsmoderation'}
+    state_list['model_gbertbase_label_needsmoderation_210423_024917']   = {'run_tag': 'precision', 'label': 'label_needsmoderation'}
+    state_list['model_gbertbase_label_needsmoderation_210423_021603']   = {'run_tag': 'recall', 'label': 'label_needsmoderation'}
+    state_list['model_gbertbase_label_sentimentnegative_210423_021224'] = {'run_tag': 'precision', 'label': 'label_sentimentnegative'}
+    state_list['model_gbertbase_label_inappropriate_210423_030629']     = {'run_tag': 'precision', 'label': 'label_inappropriate'}
+    state_list['model_gbertbase_label_discriminating_210423_025622']    = {'run_tag': 'precision', 'label': 'label_discriminating'}
     data = m.Posts()
-    data.set_label(label=label)
-    data.set_balance_method(balance_method='translate', sampling_strategy=0.9)
-    state_dict = 'model_gbertbase_label_needsmoderation_210423_014254'
-    logger.info(f"Loading model from state_dict ./models/{state_dict}.bin")
-    load_model_and_evaluate(state_dict,data, label, 2.0)
+    #data.set_balance_method(balance_method='translate', sampling_strategy=0.9)
+    data.set_balance_method(balance_method=None, sampling_strategy=1.)
+    positive_class_weight = 2.0
+    for state_dict, param_dict in state_list.items():
+        logger.info(f"Label: {param_dict['label']}")
+        logger.info(f"Loading model from state_dict ./models/{state_dict}.bin")
+        data.set_label(label=param_dict['label'])
+        load_model_and_evaluate(state_dict=state_dict, data=data, label=param_dict['label'], positive_class_weight=positive_class_weight, run_tag=param_dict['run_tag'])
 
 # %%
 if __name__ == "__main__":
