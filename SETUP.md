@@ -23,10 +23,10 @@ We use MLflow to track our models. Therefore, it needs to be set up to run scrip
   mlflow experiments create --experiment-name <name-of-experiment>
   ```
 
-3. **Always** start the mlflow server in a separate terminal session, before executin a modeling script:
+3. **Always** start the mlflow server in a separate terminal session before executing a modeling script:
 
   ```bash
   mlflow server
   ```
   
-  The UI can then be accessed with [http://127.0.0.1:5000](http://127.0.0.1:5000).
+4. Access the UI via [http://127.0.0.1:5000](http://127.0.0.1:5000).
