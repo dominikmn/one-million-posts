@@ -51,7 +51,7 @@ They are pushed as `.py` files. See [Setup - Modeling](#setup---modeling)
 | Model | Description |
 |-|-|
 | [gbert Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/gbert_classifier.py) | [German BERT base](https://huggingface.co/deepset/gbert-base) | 
-| [Zero Shot Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling_zero_shot.py) | [xlm-roberta-large-xnli](https://huggingface.co/joeddav/xlm-roberta-large-xnli) |
+| [Zero Shot Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/modeling_zero_shot.py) | [xlm-roberta-large-xnli](https://huggingface.co/joeddav/xlm-roberta-large-xnli) |
 | [XGBoost](https://github.com/dominikmn/one-million-posts/blob/main/modeling/xg_boost.py) | XGBoost |
 | [Logistic Regression](https://github.com/dominikmn/one-million-posts/blob/main/modeling/log_reg.py) | Logistic Regresssion |
 | [Support Vector Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/svc.py) | Support Vector Classifier |
