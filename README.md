@@ -1,6 +1,6 @@
 # one-million-posts
 
-Natural language processing projects based on the [one-million-posts dataset](https://ofai.github.io/million-post-corpus/).
+Natural language processing project based on the [one-million-posts dataset](https://ofai.github.io/million-post-corpus/).
 
 ## Setup
 1. Install [pyenv](https://github.com/pyenv/pyenv).
@@ -12,8 +12,24 @@ See [SETUP.md](SETUP.md).
 
 ### Setup - Notebooks
 The notebooks are pushed as `.py` files in the _python percentage script_ format (we like meaningful diffs).  
-These files have been created via the jupyter plugin [jupytext](https://github.com/mwouts/jupytext) which will automatically get installed if you execute `make setup` as part of the basic setup above.
-To get the actual notebook experience open them via jupyter. But even without jupytext you can run them just like any python file via `python -m file_name.py`.
+To get the actual notebook experience open them via jupyter with the [jupytext](https://github.com/mwouts/jupytext) plugin (gets installed as part of `make setup`).
+
+### Setup - Dashboard
+Starting the backend requires that a local model file is available.
+
+#### Initial setup
+1. Run `make dashboard`
+2. Run `make backend`
+
+#### Start backend
+1. Open a dedicated terminal session.
+2. Load the environment `source .venv_backend/bin/activate`
+3. Start the backend via `uvicorn prediction_server:app --reload`
+#### Start dashboard
+1. Open a dedicated terminal session
+2. Load the environment `source .venv_frontend/bin/activate` 
+3. Start the dashboard via `python app.py` and copy the address+port that is displayed.
+4. Open it in your browser like `http://127.0.0.1:8050/` (replace 8050 with the actual port displayed in step 3. above).
 
 ## Presentations
 The presentations are found in `./presentations/`
