@@ -1,6 +1,10 @@
 # Setup
 
-## Setup - MLflow
+## Notebook files
+The Jupyter notebooks are pushed as `.py` files in the _python percentage script_ format (we like meaningful diffs).  
+To get the actual notebook experience open them via jupyter with the [jupytext](https://github.com/mwouts/jupytext) plugin (gets installed as part of `make setup`).
+
+## MLflow
 
 We use MLflow to track our models. Therefore, it needs to be set up to run scripts in `./modeling`:
 
@@ -30,3 +34,22 @@ We use MLflow to track our models. Therefore, it needs to be set up to run scrip
   ```
   
 4. Access the UI via [http://127.0.0.1:5000](http://127.0.0.1:5000).
+
+## Dashboard
+Starting the backend requires that a local model file is available.
+
+Initial setup
+1. Run `make dashboard`
+2. Run `make backend`
+
+Start backend
+1. Open a dedicated terminal session.
+2. Load the environment `source .venv_backend/bin/activate`
+3. Start the backend via `uvicorn prediction_server:app --reload`
+
+Start dashboard
+1. Open a dedicated terminal session
+2. Load the environment `source .venv_frontend/bin/activate` 
+3. Start the dashboard via `python app.py` and copy the address+port that is displayed.
+4. Open it in your browser like `http://127.0.0.1:8050/` (replace 8050 with the actual port displayed in step 3. above).
+
