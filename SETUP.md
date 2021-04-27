@@ -4,22 +4,9 @@ Requirements:
 
 - pyenv with Python: 3.8.5
 
-## Development Setup
+## Setup - MLflow
 
-Use the requirements file in this repo to create a new environment.
-
-```BASH
-make setup
-
-#or
-
-pyenv local 3.8.5
-python -m venv .venv
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-The MLFLOW URI is not stored on git. There are two options to set it. Either locally in the .mlflow_uri file:
+The MLFLOW URI has to be added manually (not stored on git). There are two options to set it. Either locally in the .mlflow_uri file:
 
 ```BASH
 echo http://127.0.0.1:5000/ > .mlflow_uri
@@ -50,12 +37,3 @@ mlflow ui
 ```
 
 and opening the link [http://127.0.0.1:5000](http://127.0.0.1:5000).
-
-### Kill the gunicorn process
-
-If the port is in use (and the local mlflow cannot be run with `mlflow ui`) the process can be killed with
-
-```bash
-ps -A | grep gunicorn
-kill <PID>
-```
