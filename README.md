@@ -25,7 +25,7 @@ The presentations are found in `./presentations/`
 
 ## Modeling
 The models' code is found in  `./modeling/` in this repo.
-They are pushed as `.py` files. See [Setup - Modeling](#setup---modeling)
+They are pushed as `.py` files. See [SETUP.md](SETUP.md).
 | Model | Description |
 |-|-|
 | [gbert Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/gbert_classifier.py) | [German BERT base](https://huggingface.co/deepset/gbert-base) | 
@@ -39,5 +39,5 @@ They are pushed as `.py` files. See [Setup - Modeling](#setup---modeling)
 
 ## Data analysis
 The notebooks are currently found in the main folder of this repo.
-They are pushed as `.py` files. See [Setup - Notebooks](#setup---notebooks).
+They are pushed as `.py` files. See [SETUP.md](SETUP.md).
 
