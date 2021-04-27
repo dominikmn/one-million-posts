@@ -9,24 +9,16 @@ from typing import Dict
 import plotly.express as px
 import plotly.graph_objects as go
 
-from utils import loading
-COLORS =[[0, '#d3d3d3'],[1, '#ec008e']]
 COLOR_PINK = "#ec008e"
-#data = loading.load_extended_posts()
-#data_plot = data.groupby("id_article")["id_post"].count().reset_index()
+COLOR_GREY = "#bdbdbd"
+URL_BACKEND = 'http://127.0.0.1:8000/predict'
 
-external_stylesheets = [
-    {
-        "href": "https://fonts.googleapis.com/css2?"
-                "family=Lato:wght@400;700&display=swap",
-        "rel": "stylesheet",
-    },
-]
+
 external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
-#server = app.server
+server = app.server
 app.title = "One Million Posts"
 
 app.layout = html.Div(
@@ -89,11 +81,11 @@ app.layout = html.Div(
 def update_prediction(n_clicks, input_value):
     if input_value:
         new_measurement = {"text": input_value}
-        response = requests.post('http://127.0.0.1:8000/predict', json=new_measurement)
+        response = requests.post(URL_BACKEND, json=new_measurement)
         if response.ok:
             result = response.json()
             mapping_needsmoderation = {0: "Everything's fine", 1: "Needs moderation"}
-            needs_moderation = int(result['needsmoderation'] > 0.5)
+            needs_moderation = result['needsmoderation']
             style_prediction = {
                 0: {"color": "black"},
                 1: {"color": COLOR_PINK},
@@ -126,8 +118,8 @@ def get_df_from_predictions(predictions: Dict):
 
 
 def update_prediction_chart(long_df):
-    colors = [COLORS[0][1]]*4
-    colors[long_df.prediction.idxmax()] = COLORS[1][1]
+    colors = [COLOR_GREY]*3
+    colors[long_df.prediction.idxmax()] = COLOR_PINK
     fig = px.bar(long_df, x="category", y="prediction", template="none")
     fig = go.Figure(data=[go.Bar(
         x=long_df["prediction"],
@@ -158,4 +150,4 @@ def update_prediction_chart(long_df):
     return fig
 
 if __name__ == "__main__":
-    app.run_server(debug=True, use_reloader=True)
+    app.run_server(debug=False)

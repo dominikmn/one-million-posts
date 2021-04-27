@@ -26,7 +26,7 @@ class Post(BaseModel):
 
 def predict_needsmoderation(text):
     prediction = gbert_models.get_prediction([text], model_needsmoderation)
-    return prediction[0]
+    return int(prediction[0] > 0.5)
 
 
 def predict_inappropriate(text):
