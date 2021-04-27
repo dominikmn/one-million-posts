@@ -1,39 +1,32 @@
 # Setup
 
-Requirements:
-
-- pyenv with Python: 3.8.5
-
 ## Setup - MLflow
 
-The MLFLOW URI has to be added manually (not stored on git). There are two options to set it. Either locally in the .mlflow_uri file:
+We use MLflow to track our models. Therefore, it needs to be set up to run scripts in `./modeling`:
 
-```BASH
-echo http://127.0.0.1:5000/ > .mlflow_uri
-```
+1. The MLFLOW URI has to be added manually (not stored on git).
+    * Either set it locally in the .mlflow_uri file (which has to be done only once and will create a local file where the uri is stored):
+    ```BASH
+    echo http://127.0.0.1:5000/ > .mlflow_uri
+    ```
 
-this will create a local file where the uri is stored. Alternatively, one can export it as an environment variable with
+    * or export it as an environment variable (which has to be repeated on restart of your machine):
 
-```bash
-export MLFLOW_URI=http://127.0.0.1:5000/
-```
+    ```bash
+    export MLFLOW_URI=http://127.0.0.1:5000/
+    ```
+    
+    * The code in the [config.py](modeling/config.py) will try to read the uri locally and if the file doesn't exist will look in the env var. If that is not set the URI will be empty in the code.
 
-The code in the [config.py](modeling/config.py) will try to read the uri locally and if the file doesn't exist will look in the env var.. IF that is not set the URI will be empty in the code.
+2. Create an MLFlow experiment with the name that is set in config.py. **This has to be done only once.** We use the experiment name `nlp-trio` in the config.py. You can either use the GUI to create an experiment [MLflow Documentation](https://www.mlflow.org/docs/latest/tracking.html#managing-experiments-and-runs-with-the-tracking-service-api) or create a local experiment using the CLI:
+  ```bash
+  mlflow experiments create --experiment-name <name-of-experiment>
+  ```
 
-### Usage of MLFlow
+3. **Always** start the mlflow server in a separate terminal session, before executin a modeling script:
 
-#### Creating an MLFlow experiment
-
-Experiments can be created via the GUI or via [command line](https://www.mlflow.org/docs/latest/tracking.html#managing-experiments-and-runs-with-the-tracking-service-api) if one uses the local mlflow:
-
-```bash
-mlflow experiments create --experiment-name <name-of-experiment>
-```
-
-Check the local mlflow by running
-
-```bash
-mlflow ui
-```
-
-and opening the link [http://127.0.0.1:5000](http://127.0.0.1:5000).
+  ```bash
+  mlflow server
+  ```
+  
+  The UI can then be accessed with [http://127.0.0.1:5000](http://127.0.0.1:5000).
