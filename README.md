@@ -9,30 +9,7 @@ Natural language processing project based on the [one-million-posts dataset](htt
 2. Install python 3.8.5 via `pyenv install 3.8.5`
 3. Run `make setup`. 
 
-### Setup - Modeling
-See [SETUP.md](SETUP.md).
-
-### Setup - Notebooks
-The notebooks are pushed as `.py` files in the _python percentage script_ format (we like meaningful diffs).  
-To get the actual notebook experience open them via jupyter with the [jupytext](https://github.com/mwouts/jupytext) plugin (gets installed as part of `make setup`).
-
-### Setup - Dashboard
-Starting the backend requires that a local model file is available.
-
-Initial setup
-1. Run `make dashboard`
-2. Run `make backend`
-
-Start backend
-1. Open a dedicated terminal session.
-2. Load the environment `source .venv_backend/bin/activate`
-3. Start the backend via `uvicorn prediction_server:app --reload`
-
-Start dashboard
-1. Open a dedicated terminal session
-2. Load the environment `source .venv_frontend/bin/activate` 
-3. Start the dashboard via `python app.py` and copy the address+port that is displayed.
-4. Open it in your browser like `http://127.0.0.1:8050/` (replace 8050 with the actual port displayed in step 3. above).
+For further instructions on how to run our code see [SETUP.md](SETUP.md).
 
 ## Presentations
 The presentations are found in `./presentations/`
