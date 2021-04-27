@@ -1,6 +1,8 @@
-# one-million-posts
+# One Million Posts
 
 Natural language processing project based on the [one-million-posts dataset](https://ofai.github.io/million-post-corpus/).
+
+
 
 ## Setup
 1. Install [pyenv](https://github.com/pyenv/pyenv).
@@ -17,15 +19,16 @@ To get the actual notebook experience open them via jupyter with the [jupytext](
 ### Setup - Dashboard
 Starting the backend requires that a local model file is available.
 
-#### Initial setup
+Initial setup
 1. Run `make dashboard`
 2. Run `make backend`
 
-#### Start backend
+Start backend
 1. Open a dedicated terminal session.
 2. Load the environment `source .venv_backend/bin/activate`
 3. Start the backend via `uvicorn prediction_server:app --reload`
-#### Start dashboard
+
+Start dashboard
 1. Open a dedicated terminal session
 2. Load the environment `source .venv_frontend/bin/activate` 
 3. Start the dashboard via `python app.py` and copy the address+port that is displayed.
