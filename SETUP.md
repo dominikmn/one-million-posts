@@ -38,7 +38,7 @@ We use MLflow to track our model trainings. Therefore, it needs to be set up pri
 4. Access the UI via [http://127.0.0.1:5000](http://127.0.0.1:5000).
 
 ### Word2vec and GloVe
-The following modeling scripts do some part of their training on Word2Vec and GloVe embeddings. Run `make embeddings` to download the embedding dictionaries and move them to ./embeddings/ with the same naming that our modeling scripts expect.
+The following modeling scripts do some part of their training on Word2Vec and GloVe embeddings. Run `make embeddings` to automatically download the embedding dictionaries to right subfolder.
 * [XGBoost](https://github.com/dominikmn/one-million-posts/blob/main/modeling/xg_boost.py)
 * [Logistic Regression](https://github.com/dominikmn/one-million-posts/blob/main/modeling/log_reg.py)
 * [Support Vector Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/svc.py)
