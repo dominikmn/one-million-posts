@@ -4,9 +4,11 @@
 The Jupyter notebooks are pushed as `.py` files in the _python percentage script_ format (we like meaningful diffs).  
 To get the actual notebook experience open them via jupyter with the [jupytext](https://github.com/mwouts/jupytext) plugin (gets installed as part of `make setup`).
 
-## MLflow
+## Modeling scripts
+The modeling scripts are found in `./modeling`
 
-We use MLflow to track our models. Therefore, it needs to be set up to run scripts in `./modeling`:
+### MLflow
+We use MLflow to track our model trainings. Therefore, it needs to be set up prior to running scripts in `./modeling`:
 
 1. The MLFLOW URI has to be added manually (not stored on git).
     * Either set it locally in the .mlflow_uri file (which has to be done only once and will create a local file where the uri is stored):
@@ -35,8 +37,21 @@ We use MLflow to track our models. Therefore, it needs to be set up to run scrip
   
 4. Access the UI via [http://127.0.0.1:5000](http://127.0.0.1:5000).
 
+### Word2vec and GloVe
+The following modeling scripts do some part of their training on Word2Vec and GloVe embeddings. Run `make embeddings` to download the embedding dictionaries and move them to ./embeddings/ with the same naming that our modeling scripts expect.
+* [XGBoost](https://github.com/dominikmn/one-million-posts/blob/main/modeling/xg_boost.py)
+* [Logistic Regression](https://github.com/dominikmn/one-million-posts/blob/main/modeling/log_reg.py)
+* [Support Vector Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/svc.py)
+* [Random Forest Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/random_forest.py)
+* [Naive Bayes Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/naive_bayes.py)
+* [LightGBM](https://github.com/dominikmn/one-million-posts/blob/main/modeling/light_gbm.py)
+
 ## Dashboard
-Starting the backend requires that a local model file is available.
+Prerequisite: Starting the backend requires that 4 saved models of the gbert Classifier are locally available. The backend loads them via `torch.load()`. That means that you have to perform a training via [gbert_classifier.py](https://github.com/dominikmn/one-million-posts/blob/main/modeling/gbert_classifier.py) for each of the following 4 labels prior to starting the dashboard backend:
+* label_needsmoderation
+* label_sentimentnegative
+* label_discriminating
+* label_inappropriate
 
 Initial setup
 1. Run `make dashboard`
