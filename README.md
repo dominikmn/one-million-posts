@@ -17,8 +17,9 @@ For further instructions on how to run our code see [SETUP.md](SETUP.md).
 The presentations are found in `./presentations/`
 | Presentation file | Description |
 |-|-|
+| [OneMillionPosts-GraduationEvent.pdf](https://github.com/dominikmn/one-million-posts/blob/main/presentations/OneMillionPosts-GraduationEvent.pdf) | Presentation of the graduation event from April 28, 2021 |
 | [OneMillionPosts-Midterm.pdf](https://github.com/dominikmn/one-million-posts/blob/main/presentations/OneMillionPosts-Midterm.pdf) | Midterm presentation of the project from April 12, 2021 |
-| [One Million Posts - Annotation composition.pdf](https://github.com/dominikmn/one-million-posts/blob/general-readme-update-midterm/presentations/One%20Million%20Posts%20-%20Annotation%20composition.pdf) | EDA concerning ticket [#24][i24], [#25][i25] |
+| [OneMillionPosts-AnnotationComposition.pdf](https://github.com/dominikmn/one-million-posts/blob/main/presentations/OneMillionPosts-AnnotationComposition.pdf) | EDA concerning ticket [#24][i24], [#25][i25] |
 
 [i24]: https://github.com/dominikmn/one-million-posts/issues/24
 [i25]: https://github.com/dominikmn/one-million-posts/issues/25
