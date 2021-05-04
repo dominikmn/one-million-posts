@@ -38,7 +38,7 @@ We use MLflow to track our model trainings. Therefore, it needs to be set up pri
 4. Access the UI via [http://127.0.0.1:5000](http://127.0.0.1:5000).
 
 ### Word2vec and GloVe
-The following modeling scripts do some part of their training on Word2Vec and GloVe embeddings. Run `make embeddings` to automatically download the embedding dictionaries to right subfolder.
+The following modeling scripts do some part of their training on Word2Vec and GloVe embeddings. Run `make embeddings` to automatically download the embedding dictionaries to the right subfolder.
 * [XGBoost](https://github.com/dominikmn/one-million-posts/blob/main/modeling/xg_boost.py)
 * [Logistic Regression](https://github.com/dominikmn/one-million-posts/blob/main/modeling/log_reg.py)
 * [Support Vector Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/svc.py)
@@ -52,6 +52,8 @@ Prerequisite: Starting the backend requires that 4 saved models of the gbert Cla
 * label_sentimentnegative
 * label_discriminating
 * label_inappropriate
+
+Once the prerequisite is fulfilled, you can start the backend and the dashboard with the following steps:
 
 Initial setup
 1. Run `make dashboard`
