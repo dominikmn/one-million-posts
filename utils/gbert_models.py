@@ -47,7 +47,7 @@ def create_data_loader(df:pd.DataFrame, label:str, tokenizer:BertTokenizer, max_
         tokenizer=tokenizer,
         max_len=max_len
         )
-    return DataLoader(ds, batch_size=batch_size, num_workers=4, shuffle=False)
+    return DataLoader(ds, batch_size=batch_size, num_workers=0, shuffle=False)
 
 class BinaryClassifier(nn.Module):
     def __init__(self):
