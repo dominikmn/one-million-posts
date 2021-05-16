@@ -1,7 +1,7 @@
 # Imports
 import pandas as pd
 import sqlite3
-
+from utils import augmenting, feature_engineering
 
 def get_database_connection(path='./data/corpus.sqlite3'):
     con = sqlite3.connect(path)
@@ -60,7 +60,7 @@ def load_extended_posts(split:str=None, label:str=None):
     '''
     Load post table extended by annotations and staff.
     Args:
-        - split: [None, 'test', 'train', 'val']. Reduce dataframe to test/train/validation split only.
+        - split: [None, 'test', 'test_r3', 'train', 'val']. Reduce dataframe to test/train/validation split only.
     Returns:
         - Dataframe
     '''
@@ -70,9 +70,14 @@ def load_extended_posts(split:str=None, label:str=None):
     df_staff = load_staff()
     df_articles = load_articles()
 
-    if split:
+    if split in ['train', 'test', 'val']:
         filter_frame = pd.read_csv(f'./data/ann2_{split}.csv', header=None, index_col=0, names=['id_post'])
         df_posts = df_posts.merge(filter_frame, how='inner', on='id_post')
+    elif split == 'test_r3':
+        id_list = augmenting.get_augmented_val_id()
+        df_posts= feature_engineering.add_column_ann_round(df_posts)
+        df_posts= df_posts.query(f'id_post not in {id_list} & ann_round==3')
+        print(df_posts.shape)
     
     # prepare annotations
     annotations = df_annotations.pivot(index="id_post", columns="category", values="value")
@@ -95,3 +100,4 @@ def load_extended_posts(split:str=None, label:str=None):
     if label:
         df = df.dropna(subset=[label])
     return df
+

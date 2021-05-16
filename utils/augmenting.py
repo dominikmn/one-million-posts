@@ -112,4 +112,37 @@ def get_augmented_val_X_y(X, y, label):
 
 
 
-     
+def get_augmented_val_id():
+    '''get a dataset with augmented texts for the minority positive label
+    Arguments: X, y - pandas series containing the validation data that needs to be augmented
+               label - label that needs to be augmented
+               sampling_strategy - float representing the proportion of positive vs negative labels in the augmented dataframe (range [>0.0; <=1.ß])
+    Return: augmented X, y'''
+    
+    label_range = ['label_sentimentnegative', 'label_inappropriate', 'label_discriminating', 'label_needsmoderation']
+    file_cached = "./cache/df_r3.csv"
+    try:
+         df_r3 = pd.read_csv(file_cached)
+
+    except:
+        df_r3 = loading.load_extended_posts(label=label)
+        df_r3 = feature_engineering.add_column_ann_round(df_r3)
+        df_r3 = feature_engineering.add_column_text(df_r3)
+        df_r3 = df_r3.query('ann_round==3').copy()
+        df_r3.to_csv(file_cached)
+
+    df_r3 = feature_engineering.add_column_label_needsmoderation(df_r3)
+    art_list = list(df_r3.id_article.unique())
+    
+    label_range = ['label_sentimentnegative', 'label_inappropriate', 'label_discriminating', 'label_needsmoderation']
+    df_ann = pd.DataFrame(columns=df_r3.columns)
+    
+    id_list = []
+    for label in label_range:
+        for i in art_list:
+            df_ann = pd.concat((df_ann,
+                                df_r3.query(f'id_article=={i} and {label}==1').sample(1, 
+                                                                                      random_state=42)))
+            id_list.extend(list(df_ann.id_post))
+
+    return  list(set(id_list))
