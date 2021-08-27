@@ -32,13 +32,13 @@ class OMPDataset(Dataset):
             padding = 'max_length',
             return_attention_mask=True,
             return_tensors='pt',
-    )
+            )
         return {
             'text': text,
             'input_ids': encoding['input_ids'].flatten(),
             'attention_mask': encoding['attention_mask'].flatten(),
             'targets': torch.tensor(target, dtype=torch.float)
-    }
+            }
 
 def create_data_loader(df:pd.DataFrame, label:str, tokenizer:BertTokenizer, max_len:int, batch_size:int) -> DataLoader:
     ds = OMPDataset(
@@ -47,7 +47,7 @@ def create_data_loader(df:pd.DataFrame, label:str, tokenizer:BertTokenizer, max_
         tokenizer=tokenizer,
         max_len=max_len
         )
-    return DataLoader(ds, batch_size=batch_size, num_workers=4, shuffle=False)
+    return DataLoader(ds, batch_size=batch_size, num_workers=0, shuffle=False)
 
 class BinaryClassifier(nn.Module):
     def __init__(self):
@@ -55,6 +55,7 @@ class BinaryClassifier(nn.Module):
         self.bert = BertModel.from_pretrained("deepset/gbert-base")
         self.dropout = nn.Dropout(p=0.3)
         self.out = nn.Linear(self.bert.config.hidden_size, 1)
+        self.tokenizer = BertTokenizer.from_pretrained("deepset/gbert-base")
 
     def forward(self, input_ids, attention_mask):
         _, pooled_output = self.bert(
@@ -70,12 +71,12 @@ def get_model(state_dict_file: str) -> BinaryClassifier:
     model.load_state_dict(torch.load(f"{state_dict_file}"))
     return model
 
+
 def get_prediction(text_list: list, model: BinaryClassifier) -> list:
     BATCH_SIZE = 1
     MAX_LEN = 264
 
     model.eval()
-    tokenizer = BertTokenizer.from_pretrained("deepset/gbert-base")
 
     # ## Data loading
     normalize = lambda x: cleaning.normalize(x, url_emoji_dummy=False, pure_words=False)
@@ -85,10 +86,8 @@ def get_prediction(text_list: list, model: BinaryClassifier) -> list:
     y = pd.Series([0]*len(text_list)) # dummy targets
     df = pd.concat([X,y], axis=1)
     df.columns = ['text', 'target']
-    data_loader = create_data_loader(df, 'target', tokenizer, MAX_LEN, BATCH_SIZE)
+    data_loader = create_data_loader(df, 'target', model.tokenizer, MAX_LEN, BATCH_SIZE)
     
-    model = model.eval()
-
     prediction_list = []
     with torch.no_grad():
         for d in data_loader:
