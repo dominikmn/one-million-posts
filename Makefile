@@ -1,13 +1,22 @@
+SHELL := /bin/bash
 .PHONY: setup
 setup:
+		pyenv install -s 3.8.5
 		pyenv local 3.8.5
-		python -m venv .venv
-		.venv/bin/python -m pip install --upgrade pip
-		.venv/bin/python -m pip install -r requirements.txt
+		( \
+			python -m venv .venv;\
+			source .venv/bin/activate; \
+			pip install --upgrade pip; \
+			python -m pip install -r requirements.txt; \
+			python -m spacy download de; \
+		)
+		#.venv/bin/python -m pip install --upgrade pip
+		#.venv/bin/python -m pip install -r requirements.txt
+		#.venv/bin/python -m spacy download de
 		mkdir -p cache
 		mkdir -p data
-		chmod +x setup.sh
-		./setup.sh
+		curl http://lager.cs.uni-duesseldorf.de/NLP/IWNLP/IWNLP.Lemmatizer_20181001.zip -o ./data/lemma.zip
+		unzip ./data/lemma -d ./data/
 
 .PHONY: embeddings
 embeddings:
