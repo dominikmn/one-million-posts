@@ -1,7 +1,6 @@
 SHELL := /bin/bash
 .PHONY: setup
 setup:
-		pyenv install -s 3.8.5
 		pyenv local 3.8.5
 		( \
 			python -m venv .venv;\
