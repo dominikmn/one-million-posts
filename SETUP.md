@@ -4,13 +4,13 @@
 The Jupyter notebooks are pushed as `.py` files in the _python percentage script_ format (we like meaningful diffs).  
 To get the actual notebook experience open them via jupyter with the [jupytext](https://github.com/mwouts/jupytext) plugin (gets installed as part of `make setup`).
 
-## Modeling scripts
-The modeling scripts are found in `./modeling`
-
 ## PyTorch
 PyTorch requires custom installation routines depending on your local setup.
 Hence it is not part of the `make setup` and the requirements.txt file and needs to be installed manually afterwards.
 Select your preferences and run the install command provided by the click-guide on https://pytorch.org/ .
+
+## Modeling scripts
+The modeling scripts are found in `./modeling`
 
 ### MLflow
 We use MLflow to track our model trainings. Therefore, it needs to be set up prior to running scripts in `./modeling`:
