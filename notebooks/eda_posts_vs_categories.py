@@ -171,7 +171,7 @@ ax.set_ylabel('')
 ax.set_xlabel('Number of articles')
 ax.legend_.remove()
 ax.figure.set_size_inches(12,10)
-plt.savefig("./pictures/num_articles_per_category.png", bbox_inches="tight")
+plt.savefig("../pictures/num_articles_per_category.png", bbox_inches="tight")
 
 # %% [markdown]
 # ## Comment-label per path

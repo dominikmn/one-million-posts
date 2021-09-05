@@ -1,9 +1,11 @@
 # Imports
 import pandas as pd
 import sqlite3
+from pathlib import Path
 
+path_here = Path(__file__).resolve().parent
 
-def get_database_connection(path='./data/corpus.sqlite3'):
+def get_database_connection(path=path_here / "../data/corpus.sqlite3"):
     con = sqlite3.connect(path)
     return con
 

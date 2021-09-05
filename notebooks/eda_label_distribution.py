@@ -8,7 +8,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.11.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -95,7 +95,7 @@ _ = g.set_xticklabels(
 )
 g.set_ylim(bottom=0, top=1);
 add_annotation_with_hue(g, df_ann_counts.reindex(columns=["all", "2", "3"], level="ann_round").loc[:, 1])
-plt.savefig("./pictures/positive_annotations_per_label_with_count.png", bbox_inches="tight")
+plt.savefig("../pictures/positive_annotations_per_label_with_count.png", bbox_inches="tight")
 
 # %% [markdown]
 # ## Stacked Bar Chart
@@ -131,6 +131,6 @@ _ = g.set_xticklabels(
     horizontalalignment='right'
 )
 #g.set_ylim(bottom=0, top=1);
-plt.savefig("./pictures/positive_annotations_per_label_stacked.png", bbox_inches="tight");
+plt.savefig("../pictures/positive_annotations_per_label_stacked.png", bbox_inches="tight");
 
 # %%

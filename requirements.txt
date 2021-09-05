@@ -18,3 +18,4 @@ imbalanced-learn==0.8.0
 lightgbm==3.2.1
 xgboost==1.4.1
 torch==1.8.1
+-e .

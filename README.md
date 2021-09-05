@@ -39,6 +39,6 @@ They are pushed as `.py` files. See [SETUP.md](SETUP.md).
 | [LightGBM](https://github.com/dominikmn/one-million-posts/blob/main/modeling/light_gbm.py) | LightGBM algorithm not considered for further modeling |
 
 ## Data analysis
-The notebooks are currently found in the main folder of this repo.
+The notebooks are found in `./notebooks/`.
 They are pushed as `.py` files. See [SETUP.md](SETUP.md).
 
