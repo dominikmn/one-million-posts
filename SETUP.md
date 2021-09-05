@@ -7,6 +7,11 @@ To get the actual notebook experience open them via jupyter with the [jupytext](
 ## Modeling scripts
 The modeling scripts are found in `./modeling`
 
+## PyTorch
+PyTorch requires custom installation routines depending on your local setup.
+Hence it is not part of the `make setup` and the requirements.txt file and needs to be installed manually afterwards.
+Select your preferences and run the install command provided by the click-guide on https://pytorch.org/ .
+
 ### MLflow
 We use MLflow to track our model trainings. Therefore, it needs to be set up prior to running scripts in `./modeling`:
 
