@@ -1,40 +1,44 @@
-# one-million-posts
+# One Million Posts
 
-Natural language processing projects based on the [one-million-posts dataset](https://ofai.github.io/million-post-corpus/).
+Natural language processing project based on the [one-million-posts dataset](https://ofai.github.io/million-post-corpus/).
+
+More than 3.000 user comments are written each day on www.derstandard.at. Moderators need to review these comments regarding several aspects like inappropriate language, discriminating content, off-topic comments, questions that need to be answered, and more.	
+
+We provide machine learning models that detect potentially problematic comments to ease the moderators' daily work.
 
 ## Setup
 1. Install [pyenv](https://github.com/pyenv/pyenv).
 2. Install python 3.8.5 via `pyenv install 3.8.5`
 3. Run `make setup`. 
 
-### Setup - Modeling
-See [SETUP.md](SETUP.md).
-
-### Setup - Notebooks
-The notebooks are pushed as `.py` files in the _python percentage script_ format (we like meaningful diffs).  
-These files have been created via the jupyter plugin [jupytext](https://github.com/mwouts/jupytext) which will automatically get installed if you execute `make setup` as part of the basic setup above.
-To get the actual notebook experience open them via jupyter. But even without jupytext you can run them just like any python file via `python -m file_name.py`.
+For further instructions on how to run our code see [SETUP.md](SETUP.md).
 
 ## Presentations
 The presentations are found in `./presentations/`
 | Presentation file | Description |
 |-|-|
-| [One Million Posts - Annotation composition.pdf](https://github.com/dominikmn/one-million-posts/blob/general-readme-update-midterm/presentations/One%20Million%20Posts%20-%20Annotation%20composition.pdf) | EDA concerning ticket [#24][i24], [#25][i25] |
+| [OneMillionPosts-GraduationEvent.pdf](https://github.com/dominikmn/one-million-posts/blob/main/presentations/OneMillionPosts-GraduationEvent.pdf) | Presentation of the graduation event from April 28, 2021 |
+| [OneMillionPosts-Midterm.pdf](https://github.com/dominikmn/one-million-posts/blob/main/presentations/OneMillionPosts-Midterm.pdf) | Midterm presentation of the project from April 12, 2021 |
+| [OneMillionPosts-AnnotationComposition.pdf](https://github.com/dominikmn/one-million-posts/blob/main/presentations/OneMillionPosts-AnnotationComposition.pdf) | EDA concerning ticket [#24][i24], [#25][i25] |
 
 [i24]: https://github.com/dominikmn/one-million-posts/issues/24
 [i25]: https://github.com/dominikmn/one-million-posts/issues/25
 
 ## Modeling
 The models' code is found in  `./modeling/` in this repo.
-They are pushed as `.py` files. See [Setup - Modeling](#setup---modeling)
+They are pushed as `.py` files. See [SETUP.md](SETUP.md).
 | Model | Description |
 |-|-|
-| | Zero Shot Classifier |
-| | Support Vector classifier |
-| | RandomForest Classifier |
-| [Naive Bayes](https://github.com/dominikmn/one-million-posts/blob/main/modeling/naive_bayes.py) | Naive Bayes classifier |
+| [gbert Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/gbert_classifier.py) | [German BERT base](https://huggingface.co/deepset/gbert-base) | 
+| [Zero Shot Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/modeling_zero_shot.py) | [xlm-roberta-large-xnli](https://huggingface.co/joeddav/xlm-roberta-large-xnli) |
+| [XGBoost](https://github.com/dominikmn/one-million-posts/blob/main/modeling/xg_boost.py) | XGBoost |
+| [Logistic Regression](https://github.com/dominikmn/one-million-posts/blob/main/modeling/log_reg.py) | Logistic Regresssion |
+| [Support Vector Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/svc.py) | Support Vector Classifier |
+| [Random Forest Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/random_forest.py) | Random Forest Classifier |
+| [Naive Bayes Classifier](https://github.com/dominikmn/one-million-posts/blob/main/modeling/naive_bayes.py) | Naive Bayes Classifier |
+| [LightGBM](https://github.com/dominikmn/one-million-posts/blob/main/modeling/light_gbm.py) | LightGBM algorithm not considered for further modeling |
 
 ## Data analysis
 The notebooks are currently found in the main folder of this repo.
-They are pushed as `.py` files. See [Setup - Notebooks](#setup---notebooks).
+They are pushed as `.py` files. See [SETUP.md](SETUP.md).
 
