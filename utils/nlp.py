@@ -6,8 +6,10 @@ nltk.download('punkt')
 from nltk.stem.snowball import SnowballStemmer
 import spacy
 from spacy_iwnlp import spaCyIWNLP
-nlp=spacy.load('de')
-iwnlp=spaCyIWNLP(lemmatizer_path='data/IWNLP.Lemmatizer_20181001.json')
+nlp=spacy.load('de') #You need to download the 'de'-module in advance. This will be done automatically if you run `make setup` via the Makefile found in the main folder of the repo.
+from pathlib import Path
+path_here = Path(__file__).resolve().parent
+iwnlp=spaCyIWNLP(lemmatizer_path= path_here / "../data/IWNLP.Lemmatizer_20181001.json")
 nlp.add_pipe(iwnlp)
 stemmer = SnowballStemmer('german')
 

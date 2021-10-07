@@ -8,7 +8,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.11.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -27,10 +27,11 @@ import plotly.graph_objects as go
 import plotly.figure_factory as ff
 
 # %% [markdown]
-# In order to use plotly from jupyterlab install the following from your terminal:
+# In order to use plotly inside jupyterlab follow these steps:
+# 1. Install nodejs https://nodejs.org/en/download/package-manager/ 
+# 2. install the jupyterlab-plotly extension
 # ```
 # jupyter labextension install jupyterlab-plotly@4.14.3
-# jupyter labextension install @jupyter-widgets/jupyterlab-manager plotlywidget@4.14.3
 # ```
 
 # %% [markdown]
@@ -90,7 +91,7 @@ data['text']=data.text.str.replace('\n',' ').str.replace('\r', ' ')
 data_1000 = data.query('ann_round==2').copy()
 
 # %%
-data_pred_1000 = pd.read_csv('./output/zero_shot_result_1000.csv', index_col=0)
+data_pred_1000 = pd.read_csv('../output/zero_shot_result_1000.csv', index_col=0)
 data_merge_1000 = pd.merge(data_1000, data_pred_1000, how='left', on = 'id_post', suffixes = ('_true', '_pred'))
 scores_1000_05 = scoring.get_score_df(data_merge_1000)
 scores_1000_best = scoring.get_score_df(data_merge_1000, best=True)
@@ -107,7 +108,7 @@ scores_zeroshot
 # ## Scores MLflow
 
 # %%
-scores_mlflow = pd.read_csv('./output/mlflow_scores_21-04-09.csv', usecols=['label','val - F1','model',])
+scores_mlflow = pd.read_csv('../output/mlflow_scores_21-04-09.csv', usecols=['label','val - F1','model',])
 scores_mlflow.rename(columns={'val - F1':'f1_score'}, inplace=True)
 scores_mlflow.head(3)
 

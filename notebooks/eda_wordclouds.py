@@ -8,13 +8,13 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.11.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
 # %%
-from utils import loading, cleaning, visualizing, feature_engineering
+from utils import loading, nlp, cleaning, visualizing, feature_engineering
 import pandas as pd
 from nltk.corpus import stopwords
 stopwords=stopwords.words('german')
@@ -39,7 +39,7 @@ def top_words_label(df, label, text, stop=False, stopwords=None, plot=True, retu
     df_clean=df.dropna(subset=[label])
     df_clean.loc[:,text]=cleaning.strip_punct(df_clean[text])
     if stop:
-        df_clean.loc[:,text]=cleaning.strip_stopwords(df_clean[text], stopwords=stopwords)
+        df_clean.loc[:,text]=nlp.strip_stopwords(df_clean[text], stopwords=stopwords)
     df_pos = df_clean[df_clean[label]==1]
     df_neg = df_clean[df_clean[label]==0]
     topwords_pos = feature_engineering.calculate_top_words(df_pos[text], relative=True)
@@ -304,11 +304,11 @@ print(f'top words for Sentiment Positive negative specific:\n{spo_neg_rel[:10]}'
 
 # %%
 top_words_label(df.query('ann_round==2'), 'label_sentimentnegative', 'body', True, stopwords, True, False, False)
-plt.savefig('./pictures/wc_negative_round2.png')
+plt.savefig('../pictures/wc_negative_round2.png')
 
 # %%
 top_words_label(df, 'label_sentimentnegative', 'body', True, stopwords, True, False, False)
-plt.savefig('./pictures/wc_negative_all.png')
+plt.savefig('../pictures/wc_negative_all.png')
 
 # %% [markdown]
 # ### positive

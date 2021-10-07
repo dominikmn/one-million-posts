@@ -4,6 +4,8 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Tuple, Dict
+from pathlib import Path
+path_here = Path(__file__).resolve().parent
 
 # evaluation imports
 from sklearn.metrics import f1_score, recall_score, precision_score, confusion_matrix, fbeta_score
@@ -71,7 +73,7 @@ class Posts:
             y: The target annotations
         """
         if split:
-            filter_frame = pd.read_csv(f'./data/ann2_{split}.csv', header=None, index_col=0, names=['id_post'])
+            filter_frame = pd.read_csv(path_here / f'../data/ann2_{split}.csv', header=None, index_col=0, names=['id_post'])
             df = self.df.merge(filter_frame, how='inner', on='id_post')
         else:
             df = self.df.copy()

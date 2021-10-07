@@ -8,7 +8,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.11.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -21,7 +21,7 @@ import sqlite3
 from IPython.core.display import display, HTML
 
 # %%
-con = sqlite3.connect('./data/corpus.sqlite3')
+con = sqlite3.connect('../data/corpus.sqlite3')
 cur = con.cursor()
 
 # %%
